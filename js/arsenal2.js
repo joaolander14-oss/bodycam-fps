@@ -25,7 +25,7 @@
       const b = by[base] || rows.find((r) => r[0] === base); const r = b.slice(0, 13); r[0] = id; r[1] = name;
       const set = (k, i) => { if (o[k] !== undefined) r[i] = o[k]; };
       set('origin', 4); set('rpm', 5); set('auto', 6); set('mag', 7); set('mass', 8); set('v0', 9); set('len', 10); if (o.cal) r[3] = o.cal; if (o.snd) r[12] = o.snd;
-      r[11] = 'var:' + base; r.push(Object.assign({}, b[13] || {}, { var: base, mod, sup: mod === 'sup' || undefined, zoom: o.zoom }));
+      r[11] = 'var:' + base; r.push(Object.assign({}, b[13] || {}, { var: base, mod }, mod === 'sup' ? { sup: true } : {}, o.zoom !== undefined ? { zoom: o.zoom } : {}));
       return r;
     };
     const sd = (id, name, base, o) => V(id, name, base, Object.assign({ mass: (by[base] || rows.find((r) => r[0] === base))[8] + 0.45 }, o || {}), 'sup');

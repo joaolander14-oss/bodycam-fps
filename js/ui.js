@@ -142,7 +142,7 @@
   UI.setDot = (on, type) => { const el = $('rdot'); el.style.display = on ? 'block' : 'none'; if (on) el.className = type === 'holo' ? 'holo' : 'dot'; };
   UI.scoreboard = function (on) {
     const el = $('score'); if (!on) { el.classList.add('hidden'); return; }
-    const row = (a) => `<tr><td>${a.isPlayer ? '▶ ' : ''}${a.name}</td><td>${a.kills || 0}</td><td>${a.deaths || 0}</td></tr>`;
+    const row = (a) => `<tr><td>${a.isPlayer ? '▶ ' : ''}${String(a.name).replace(/[<>&"]/g, '')}</td><td>${a.kills || 0}</td><td>${a.deaths || 0}</td></tr>`;
     let h = '';
     for (let t = 0; t < 2; t++) {
       const list = G.actors.filter((a) => a.team === t).sort((a, b) => (b.kills || 0) - (a.kills || 0));
@@ -152,7 +152,7 @@
   };
   UI.lockChanged = function (locked) {
     if (!G.running || G.over) return;
-    $('pause').classList.toggle('hidden', locked); G.paused = !locked;
+    $('pause').classList.toggle('hidden', locked); G.paused = !locked && !G.net;
   };
   UI.endMatch = function (win) {
     $('endT').textContent = win ? 'VITÓRIA' : 'DERROTA'; $('endT').style.color = win ? '#9fe6a3' : '#ff8a7a';

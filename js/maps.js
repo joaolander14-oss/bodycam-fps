@@ -61,7 +61,7 @@
       const s = smin + rng() * (smax - smin), v = 0.72 + rng() * 0.28;
       const c = new T.Color(tint || 0x8a8b88).multiplyScalar(v);
       list.push({ x, y: y + s * 0.15, z, ry: rng() * 6, s, c: c.getHex() });
-      if (play) W.addCylCol(x, z, s * 0.85, y, y + s * 0.7, 'rock');
+      if (play) W.addCylCol(x, z, s * 0.85, y, y + Math.max(0.95, s * 0.8), 'rock');
     }
     W.instanced(geo, vmat, list);
   }
@@ -198,7 +198,7 @@
       }, 'snow');
       scatter(W, rng, 'pineSnow', cnt(190), { col: 0.3, smin: 0.85, smax: 1.7, sy: true });
       rocks(W, rng, cnt(34), 0.8, 2.4, 0xa9adb0);
-      const mounds = []; for (let i = 0; i < cnt(40); i++) { const x = (rng() * 2 - 1) * (S.H + 12), z = (rng() * 2 - 1) * (S.H + 12); if (Math.abs(z) > S.H - 22) continue; mounds.push({ x, y: W.heightAt(x, z), z, s: 1.5 + rng() * 2.5, sx: 1.6, sz: 1.1, ry: rng() * 3, c: 0xf2f6fa }); }
+      const mounds = []; for (let i = 0; i < cnt(40); i++) { const x = (rng() * 2 - 1) * (S.H + 12), z = (rng() * 2 - 1) * (S.H + 12); if (Math.abs(z) > S.H - 22) continue; const ms = 1.5 + rng() * 2.5, my = W.heightAt(x, z); mounds.push({ x, y: my, z, s: ms, sx: 1.6, sz: 1.1, ry: rng() * 3, c: 0xf2f6fa }); if (Math.abs(x) < S.H && Math.abs(z) < S.H) W.addCylCol(x, z, ms * 1.05, my, my + Math.max(0.9, ms * 0.4), 'snow'); }
       W.instanced(treeG.mound(), vmat, mounds, false);
       for (const [cx, cz, y] of st) { const w = 9 + rng() * 3, d = 6 + rng() * 2; hollow(W, rng, cx - w / 2, cz - d / 2, cx + w / 2, cz + d / 2, 2.9, 'log', { u: 1.6, roofMat: 'wood', partition: false, y }); sandbags(W, cx + 9, cz + 3, 4, rng() < 0.5); }
       for (let i = 0; i < cnt(10); i++) { const p = W.randomFree(rng, -S.H + 15, S.H - 15, -S.H + 30, S.H - 30, 1); sandbags(W, p.x, p.z, 3 + rng() * 3, rng() < 0.5); }

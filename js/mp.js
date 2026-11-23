@@ -8,7 +8,95 @@
     // retransmissão (TURN) para redes que bloqueiam a conexão direta (dados móveis, roteadores restritivos)
     { urls: ['turn:openrelay.metered.ca:80', 'turn:openrelay.metered.ca:443', 'turns:openrelay.metered.ca:443?transport=tcp'], username: 'openrelayproject', credential: 'openrelayproject' }], iceCandidatePoolSize: 4 };
   const $ = (id) => document.getElementById(id);
-  let peer = null, conns = [], toHost = null, remotes = [], acc = 0, endSent = false;
+  const BROKERS = ['wss://broker.emqx.io:8084/mqtt', 'wss://broker.hivemq.com:8884/mqtt', 'wss://test.mosquitto.org:8081/mqtt'];
+  const TP = 'bodycam1/';
+  const te = new TextEncoder(), td = new TextDecoder();
+  const cat = (...parts) => { let n = 0; for (const q of parts) n += q.length; const o = new Uint8Array(n); let i = 0; for (const q of parts) { o.set(q, i); i += q.length; } return o; };
+  const u16s = str => { const b = te.encode(str); return cat(new Uint8Array([b.length >> 8, b.length & 255]), b); };
+  const remLen = n => { const a = []; do { let d = n & 127; n >>= 7; if (n) d |= 128; a.push(d); } while (n); return new Uint8Array(a); };
+  const mqPacket = (b0, body) => cat(new Uint8Array([b0]), remLen(body.length), body);
+  // cliente MQTT 3.1.1 mínimo (QoS 0) sobre WebSocket
+  class Mq {
+    constructor(url, onMsg, onClose) { this.url = url; this.onMsg = onMsg; this.onClose = onClose; this.ws = null; this.ok = false; this.buf = new Uint8Array(0); this.pid = 1; this.waiters = {}; this.pt = 0; }
+    connect(ms) {
+      return new Promise(res => {
+        let done = false, tm = 0; const fin = v => { if (!done) { done = true; clearTimeout(tm); res(v); } };
+        tm = setTimeout(() => { fin(false); try { this.ws.close(); } catch (e) { } }, ms || 6000);
+        let ws; try { ws = new WebSocket(this.url, 'mqtt'); } catch (e) { return fin(false); }
+        ws.binaryType = 'arraybuffer'; this.ws = ws;
+        ws.onopen = () => ws.send(mqPacket(0x10, cat(u16s('MQTT'), new Uint8Array([4, 2, 0, 30]), u16s('et' + Math.random().toString(36).slice(2, 10)))));
+        ws.onmessage = e => this.feed(new Uint8Array(e.data), fin);
+        ws.onerror = () => fin(false);
+        ws.onclose = () => { const was = this.ok; this.ok = false; clearInterval(this.pt); fin(false); if (was && this.onClose) this.onClose(this); };
+      });
+    }
+    feed(chunk, fin) {
+      this.buf = cat(this.buf, chunk);
+      for (;;) {
+        const b = this.buf; if (b.length < 2) return;
+        let mul = 1, len = 0, i = 1, c;
+        do { if (i >= b.length) return; c = b[i++]; len += (c & 127) * mul; mul *= 128; } while ((c & 128) && i < 5);
+        if (b.length < i + len) return;
+        const type = b[0] >> 4, qos = (b[0] >> 1) & 3, body = b.subarray(i, i + len);
+        this.buf = b.slice(i + len);
+        if (type === 2) {
+          if (body[1] === 0) { this.ok = true; this.pt = setInterval(() => { try { this.ws.send(new Uint8Array([0xC0, 0])); } catch (e) { } }, 15000); fin(true); } else fin(false);
+        } else if (type === 9) { const w = this.waiters[(body[0] << 8) | body[1]]; if (w) w(); }
+        else if (type === 3) {
+          const tl = (body[0] << 8) | body[1]; let q = 2 + tl; if (qos) q += 2;
+          try { if (this.onMsg) this.onMsg(td.decode(body.subarray(2, 2 + tl)), td.decode(body.subarray(q))); } catch (e) { }
+        }
+      }
+    }
+    sub(topic) {
+      return new Promise(res => {
+        const id = this.pid++; const t = setTimeout(res, 3000); this.waiters[id] = () => { clearTimeout(t); res(); };
+        try { this.ws.send(mqPacket(0x82, cat(new Uint8Array([id >> 8, id & 255]), u16s(topic), new Uint8Array([0])))); } catch (e) { res(); }
+      });
+    }
+    pub(topic, str) { const w = this.ws; if (!w || w.readyState !== 1 || w.bufferedAmount > 300000) return; try { w.send(mqPacket(0x30, cat(u16s(topic), te.encode(str)))); } catch (e) { } }
+    close() { this.ok = false; clearInterval(this.pt); try { this.ws.send(new Uint8Array([0xE0, 0])); } catch (e) { } try { this.ws.close(); } catch (e) { } }
+  }
+  const Relay = {
+    // anfitrião: escuta o tópico "up" em TODOS os brokers (o convidado usa o primeiro que responder)
+    host(code, onUp) {
+      const list = []; let closed = false;
+      const open = async (bi) => {
+        if (closed) return false;
+        const mq = new Mq(BROKERS[bi], (t, pl) => { let m; try { m = JSON.parse(pl); } catch (e) { return; } onUp(bi, m); }, () => { if (!closed) setTimeout(() => open(bi), 3000); });
+        list[bi] = mq;
+        if (!(await mq.connect(6000))) { if (!closed) setTimeout(() => open(bi), 8000); return false; }
+        await mq.sub(TP + code + '/up'); return true;
+      };
+      return {
+        start: async () => (await Promise.all(BROKERS.map((_, i) => open(i)))).filter(Boolean).length,
+        pub(bi, topic, str) { const mq = list[bi]; if (mq && mq.ok) mq.pub(topic, str); },
+        count: () => list.filter(m => m && m.ok).length,
+        close() { closed = true; for (const m of list) if (m) m.close(); }
+      };
+    },
+    // convidado: conecta nos 3 em paralelo, assina "to/<gid>" e manda o hello em todos; o 1º welcome escolhe o caminho
+    guest(code, gid, onMsg) {
+      const list = []; let chosen = -1;
+      const up = TP + code + '/up', dn = TP + code + '/to/' + gid;
+      const R = {
+        async ready() {
+          const r = await Promise.all(BROKERS.map(async (u, i) => {
+            const mq = new Mq(u, (t, pl) => { let m; try { m = JSON.parse(pl); } catch (e) { return; } onMsg(i, m); }, () => { });
+            list[i] = mq; if (!(await mq.connect(6000))) return false; await mq.sub(dn); return true;
+          }));
+          return r.filter(Boolean).length;
+        },
+        sendAll(m) { m.g = gid; const str = JSON.stringify(m); for (const q of list) if (q && q.ok) q.pub(up, str); },
+        choose(i) { chosen = i; for (let k = 0; k < list.length; k++) if (k !== i && list[k]) list[k].close(); },
+        conn: { open: true, relay: true, send(m) { m.g = gid; const q = list[chosen]; if (q && q.ok) q.pub(up, JSON.stringify(m)); }, close() { } },
+        close() { for (const q of list) if (q) q.close(); }
+      };
+      return R;
+    }
+  };
+  let peer = null, conns = [], toHost = null, remotes = [], acc = 0, endSent = false, relayH = null, relayG = null, hostTimer = 0, helloTimer = 0, joinTok = 0;
+  const relayConns = new Map();
   const nets = new Map(); // convidado: chave -> NetActor
   const r2 = (v) => Math.round(v * 100) / 100, r3 = (v) => Math.round(v * 1000) / 1000;
   const WIDX = {}; const widx = (id) => { if (!(id in WIDX)) WIDX[id] = BC.WEAPONS.findIndex((w) => w.id === id); return WIDX[id]; };
@@ -109,6 +197,7 @@
 
   // ------------------------------------------------------------ rede: comum
   MP.leave = function () {
+    joinTok++; clearInterval(hostTimer); clearInterval(helloTimer); try { if (relayH) relayH.close(); } catch (e) { } try { if (relayG) relayG.close(); } catch (e) { } relayH = relayG = null; relayConns.clear();
     try { conns.forEach((c) => c.close()); } catch (e) { } try { if (toHost) toHost.close(); } catch (e) { } try { if (peer) peer.destroy(); } catch (e) { }
     peer = null; conns = []; toHost = null; MP.role = null; MP.code = null; MP.players = []; MP.playing = false;
     for (const r of remotes) { r.dispose(); const i = G.actors.indexOf(r); if (i >= 0) G.actors.splice(i, 1); } remotes = [];
@@ -121,24 +210,44 @@
   // ------------------------------------------------------------ anfitrião
   MP.host = function (name, loadout, agent) {
     MP.leave(); setStatus('Criando a sala…');
-    return loadPeer().then(() => new Promise((res, rej) => {
-      let tries = 0;
+    return loadPeer().catch(() => null).then(() => new Promise((res) => {
+      let tries = 0, done = false; const fin = (v) => { if (!done) { done = true; res(v); } };
+      if (!window.Peer) return fin(false);
+      setTimeout(() => fin(false), 9000);
       const make = () => {
         MP.code = code5(); peer = new Peer(PREFIX + MP.code, { debug: 0, config: ICE });
-        peer.on('open', () => res(MP.code));
-        peer.on('error', (e) => { if (e.type === 'unavailable-id' && tries++ < 5) { try { peer.destroy(); } catch (x) { } make(); } else rej(new Error('Não foi possível criar a sala (' + e.type + ').')); });
+        peer.on('open', () => fin(true));
+        peer.on('error', (e) => { if (e.type === 'unavailable-id' && tries++ < 5) { try { peer.destroy(); } catch (x) { } make(); } else fin(false); });
       };
-      make(); setTimeout(() => { if (!MP.role) rej(new Error('Tempo esgotado ao conectar ao servidor de salas.')); }, 12000);
-    })).then((code) => {
+      make();
+    })).then(async (p2p) => {
+      if (!MP.code) MP.code = code5();
+      if (p2p) { peer.on('connection', (c) => { c.on('data', (d) => hostRecv(c, d)); c.on('close', () => hostDrop(c)); c.on('error', () => hostDrop(c)); }); peer.on('disconnected', () => { try { peer.reconnect(); } catch (e) { } }); }
+      else { try { if (peer) peer.destroy(); } catch (e) { } peer = null; }
+      relayH = Relay.host(MP.code, relayUp); const nb = await relayH.start();
+      if (!p2p && !nb) { try { relayH.close(); } catch (e) { } relayH = null; MP.code = null; throw new Error('Sem conexão com os servidores de sala. Verifique a internet.'); }
       MP.role = 'host'; MP.myId = 0; MP.players = [{ name, host: true, team: 0, loadout, agent, conn: null }];
-      peer.on('connection', (c) => { c.on('data', (d) => hostRecv(c, d)); c.on('close', () => hostDrop(c)); c.on('error', () => hostDrop(c)); });
-      peer.on('disconnected', () => { try { peer.reconnect(); } catch (e) { } });
-      setStatus('Sala ' + code + ' criada. Passe o código aos amigos.'); lobbyChanged(); return code;
+      clearInterval(hostTimer);
+      hostTimer = setInterval(() => { const now = performance.now(); for (const c of conns.slice()) if (c.relay) { if (now - c.last > 15000) hostDrop(c); else if (!MP.playing) sendTo(c, { t: 'hb' }); } }, 3000);
+      setStatus('Sala ' + MP.code + ' criada' + (p2p && nb ? '.' : nb ? ' (modo retransmissão).' : ' (só conexão direta).') + ' Passe o código aos amigos.'); lobbyChanged(); return MP.code;
     });
   };
+  // mensagens vindas dos brokers MQTT: cria a "conexão" virtual do convidado e entrega ao mesmo tratador do P2P
+  function relayUp(bi, m) {
+    if (!m || !m.g || !m.t || MP.role !== 'host') return;
+    let c = relayConns.get(m.g);
+    if (!c) {
+      if (m.t !== 'hello') return;
+      c = { peer: m.g, relay: true, open: true, bi, last: performance.now(), send: (x) => relayH && relayH.pub(c.bi, TP + MP.code + '/to/' + m.g, JSON.stringify(x)), close: () => { c.open = false; } };
+      relayConns.set(m.g, c);
+    } else if (m.t === 'hello' && c.bi !== bi) return;
+    c.last = performance.now(); if (m.t !== 'hello') c.bi = bi;
+    hostRecv(c, m);
+  }
   function hostRecv(c, d) {
     if (!d || typeof d !== 'object') return;
     if (d.t === 'hello') {
+      const ex = MP.players.findIndex((p) => p.conn === c); if (ex >= 0) { sendTo(c, { t: 'welcome', id: ex }); return; }
       if (d.ver !== MP.ver) { sendTo(c, { t: 'rej', why: 'Versão diferente do jogo. Atualize a página (Ctrl+F5).' }); setTimeout(() => { try { c.close(); } catch (e) { } }, 300); return; }
       if (MP.playing) { sendTo(c, { t: 'rej', why: 'A partida já começou. Aguarde o fim.' }); return; }
       if (MP.players.length >= 8) { sendTo(c, { t: 'rej', why: 'Sala cheia (máximo 8 jogadores).' }); return; }
@@ -146,7 +255,7 @@
       MP.players.push({ name: String(d.name || 'Soldado').slice(0, 14), host: false, team: id % 2, loadout: (d.loadout || []).slice(0, 2), agent: d.agent | 0, conn: c }); c._id = id; conns.push(c);
       sendTo(c, { t: 'welcome', id }); lobbyChanged(); return;
     }
-    const p = MP.players.find((q) => q.conn === c), r = remotes.find((q) => q.conn === c); if (!p) return;
+    const p = MP.players.find((q) => q.conn === c), r = remotes.find((q) => q.conn === c); if (!p) return; if (c.relay) c.last = performance.now();
     if (d.t === 'in' && r) r.receive(d);
     else if (d.t === 'f' && r) hostFire(r, d, c);
     else if (d.t === 'g' && r) { const o = { x: d.p[0], y: d.p[1], z: d.p[2] }, v = d.v; if (!BC.GREN[d.ty] || Math.hypot(o.x - r.x, o.z - r.z) > 8) return; _throw.call(BC.Gren, r, d.ty, new T.Vector3(o.x, o.y, o.z), new T.Vector3(v[0], v[1], v[2])); bcast({ t: 'g', ty: d.ty, p: d.p, v: d.v, tm: r.team }, c); }
@@ -161,7 +270,7 @@
   const CFGK = ['map', 'mapSize', 'size', 'skin', 'enemy', 'farda', 'fardaE', 'diff'];
   MP.hostBegin = function () {
     if (MP.role !== 'host') return;
-    if (MP.players.length < 2 && !confirm('Ninguém entrou na sala ainda. Iniciar mesmo assim (só com bots)?')) { el('menu').classList.remove('hidden'); return; }
+    if (MP.players.length < 2 && !confirm('Ninguém entrou na sala ainda. Iniciar mesmo assim (só com bots)?')) { el('menu').classList.remove('hidden'); return false; }
     const S = G.settings, cfg = {}; for (const k of CFGK) cfg[k] = S[k];
     MP.playing = true; G.net = 'host'; G.myTeam = 0; endSent = false; acc = 0;
     MP.players.forEach((p, i) => { if (p.conn) sendTo(p.conn, { t: 'start', cfg, id: i, team: p.team, names: MP.players.map((q) => q.name), teams: MP.players.map((q) => q.team) }); });
@@ -171,7 +280,7 @@
     G.player.name = MP.players[0].name; G.player.name2 = G.player.name;
   };
   function hostFire(r, d, c) {
-    if (!r.alive) return; const spec = BC.WEAPONS[d.w]; if (!spec || !d.o || !d.d) return;
+    if (!r.alive || !G.running || G.over) return; const spec = BC.WEAPONS[d.w]; if (!spec || !d.o || !d.d) return;
     if (Math.hypot(d.o[0] - r.x, d.o[2] - r.z) > 8) return;
     const o = { x: d.o[0], y: d.o[1], z: d.o[2] }, l = Math.hypot(d.d[0], d.d[1], d.d[2]) || 1, v = { x: d.d[0] / l, y: d.d[1] / l, z: d.d[2] / l };
     _fire.call(G, r, o, v, spec, 1, null, false);
@@ -189,27 +298,45 @@
   MP.join = function (code, name, loadout, agent) {
     MP.leave(); code = String(code || '').trim().toUpperCase();
     if (!/^[A-Z]{5}$/.test(code)) return Promise.reject(new Error('Código inválido (5 letras).'));
-    setStatus('Conectando…');
-    return loadPeer().then(() => new Promise((res, rej) => {
-      peer = new Peer({ debug: 0, config: ICE }); let done = false;
-      const fail = (m) => { if (!done) { done = true; rej(new Error(m)); } };
-      const tm = setTimeout(() => fail('Não encontrei a sala (ou a conexão direta foi bloqueada pela rede).'), 14000);
-      peer.on('error', (e) => { clearTimeout(tm); fail(e.type === 'peer-unavailable' ? 'Sala não encontrada. Confira o código.' : 'Erro de rede: ' + e.type); });
-      peer.on('open', () => {
-        const c = peer.connect(PREFIX + code, { serialization: 'json', reliable: true }); toHost = c;
-        c.on('open', () => sendTo(c, { t: 'hello', ver: MP.ver, name, loadout, agent }));
-        c.on('data', (d) => {
-          if (!d || typeof d !== 'object') return;
-          if (d.t === 'welcome') { MP.myId = d.id; if (!done) { clearTimeout(tm); done = true; MP.role = 'guest'; MP.code = code; setStatus('Conectado à sala ' + code + '. Aguarde o anfitrião iniciar.'); res(code); } }
-          else if (d.t === 'rej') { clearTimeout(tm); fail(d.why); }
-          else guestRecv(d);
-        });
-        c.on('close', () => { if (MP.role) { const was = MP.playing; MP.leave(); emit('closed', was); } });
-        c.on('error', () => { });
+    setStatus('Conectando…'); const tok = ++joinTok, gid = Math.random().toString(36).slice(2, 10);
+    return loadPeer().catch(() => null).then(() => new Promise((res, rej) => {
+      let done = false, err = '';
+      const fail = (m) => { if (!done) { done = true; clearInterval(helloTimer); rej(new Error(m)); } };
+      const ok = (conn, how) => { if (done || tok !== joinTok) return false; done = true; clearInterval(helloTimer); toHost = conn; MP.role = 'guest'; MP.code = code; setStatus('Conectado à sala ' + code + (how === 'relay' ? ' (retransmissão)' : '') + '. Aguarde o anfitrião iniciar.'); res(code); return true; };
+      const hello = { t: 'hello', ver: MP.ver, name, loadout, agent };
+      const tm = setTimeout(() => fail(err || 'Não encontrei a sala. Confira o código (e se o anfitrião ainda está com a sala aberta).'), 25000);
+      const onAny = (d, how, conn) => {
+        if (!d || typeof d !== 'object') return;
+        if (d.t === 'welcome') { MP.myId = d.id; if (!done) ok(conn, how); else if (toHost === conn) MP.myId = d.id; }
+        else if (d.t === 'rej') { clearTimeout(tm); fail(d.why); }
+        else if (done && toHost === conn) guestRecv(d);
+      };
+      // caminho 1: conexão direta (WebRTC)
+      if (window.Peer) {
+        try {
+          peer = new Peer({ debug: 0, config: ICE });
+          peer.on('error', (e) => { if (e.type === 'peer-unavailable') err = 'Sala não encontrada pela conexão direta (tentando retransmissão…)'; });
+          peer.on('open', () => {
+            const c = peer.connect(PREFIX + code, { serialization: 'json', reliable: true });
+            c.on('open', () => sendTo(c, hello)); c.on('data', (d) => onAny(d, 'p2p', c));
+            c.on('close', () => { if (MP.role && toHost === c) { const was = MP.playing; MP.leave(); emit('closed', was); } }); c.on('error', () => { });
+          });
+        } catch (e) { }
+      }
+      // caminho 2: retransmissão por brokers MQTT (funciona mesmo em redes que bloqueiam a conexão direta)
+      relayG = Relay.guest(code, gid, (bi, m) => { if (tok === joinTok && relayG) { if (m && m.t === 'welcome' && !done) relayG.choose(bi); onAny(m, 'relay', relayG.conn); } });
+      relayG.ready().then((n) => {
+        if (tok !== joinTok || done) return;
+        if (!n && !window.Peer) return fail('Sem conexão com a internet.');
+        const send = () => { if (!done && tok === joinTok) relayG.sendAll(Object.assign({}, hello)); };
+        send(); helloTimer = setInterval(send, 2000);
       });
-    }));
+      relayG.conn.onclose = null;
+    })).then((c) => { clearInterval(helloTimer); return c; });
   };
+  // convidado em retransmissão: avisa o anfitrião periodicamente (também mantém a sala viva)
   function guestRecv(d) {
+    if (d.t !== 'lobby' && d.t !== 'start' && (!G.running || G.net !== 'guest' || !G.world)) return;
     if (d.t === 'lobby') { MP.players = d.players; emit('lobby', MP.players); }
     else if (d.t === 'start') emit('start', d);
     else if (d.t === 's') guestSnap(d);
@@ -273,15 +400,17 @@
     return g;
   };
 
+  setInterval(() => { if (MP.role === 'guest' && toHost && toHost.relay && !MP.playing) sendTo(toHost, { t: 'hb' }); }, 3000);
+  MP.sendEnd = function () { if (G.net === 'host' && !endSent) { endSent = true; bcast({ t: 'e', sc: G.score }); } };
   MP.tick = function (dt) {
     acc += dt;
     if (G.net === 'host') {
       for (const r of remotes) r.update(dt);
-      if (acc >= 0.05) { acc = 0; snapshot(); }
+      if (acc >= (conns.some((c) => c.relay) ? 0.1 : 0.05)) { acc = 0; snapshot(); }
       if (G.over && !endSent) { endSent = true; bcast({ t: 'e', sc: G.score }); }
     } else if (G.net === 'guest') {
       for (const n of nets.values()) n.update(dt);
-      if (acc >= 0.05) { acc = 0; const P = G.player; if (P.alive && toHost) sendTo(toHost, { t: 'in', x: r2(P.x), y: r2(P.y), z: r2(P.z), yaw: r3(P.yaw), pitch: r3(P.pitch), stn: r2(P.stn), w: widx(P.w[P.cur].spec.id) }); }
+      if (acc >= ((toHost && toHost.relay) ? 0.1 : 0.05)) { acc = 0; const P = G.player; if (P.alive && toHost) sendTo(toHost, { t: 'in', x: r2(P.x), y: r2(P.y), z: r2(P.z), yaw: r3(P.yaw), pitch: r3(P.pitch), stn: r2(P.stn), w: widx(P.w[P.cur].spec.id) }); }
     }
   };
 
@@ -289,7 +418,7 @@
   const el = (id) => $(id) || document.createElement('div');
   function draw() {
     const box = el('mpList'), isH = MP.role === 'host';
-    box.innerHTML = MP.players.map((p) => `<div>${p.host ? '★ ' : '• '}${p.name} <span style="opacity:.6">— time ${p.team === 0 ? 'A' : 'B'}</span></div>`).join('');
+    box.innerHTML = MP.players.map((p) => `<div>${p.host ? '★ ' : '• '}${String(p.name).replace(/[<>&"]/g, '')} <span style="opacity:.6">— time ${p.team === 0 ? 'A' : 'B'}</span></div>`).join('');
     el('mpStart').style.display = isH ? '' : 'none'; el('mpLeave').style.display = MP.role ? '' : 'none';
     el('mpHost').disabled = el('mpJoin').disabled = !!MP.role;
   }
@@ -300,8 +429,8 @@
   el('mpJoin').onclick = () => { const m = me(); MP.join(el('mpCode').value, m.name, m.loadout, m.agent).catch((e) => { el('mpInfo').textContent = e.message; MP.leave(); draw(); }); };
   el('mpLeave').onclick = () => { MP.leave(); el('mpInfo').textContent = ''; draw(); };
   el('mpStart').onclick = () => {
-    if (MP.role !== 'host') return; BC.UI.collect(); const S = G.settings;
-    Promise.all([BC.loadFlag(BC.TEAMS[S.skin].flag), BC.loadFlag(BC.TEAMS[S.enemy].flag)]).then(() => { el('menu').classList.add('hidden'); MP.hostBegin(); G.paused = false; G.lock(); });
+    if (MP.role !== 'host' || MP.playing || el('mpStart').disabled) return; el('mpStart').disabled = true; BC.UI.collect(); const S = G.settings;
+    Promise.all([BC.loadFlag(BC.TEAMS[S.skin].flag), BC.loadFlag(BC.TEAMS[S.enemy].flag)]).then(() => { el('menu').classList.add('hidden'); if (MP.hostBegin() !== false) { G.paused = false; G.lock(); } el('mpStart').disabled = false; }).catch(() => { el('mpStart').disabled = false; });
   };
   MP.on('start', (d) => {
     const S = G.settings; Object.assign(S, d.cfg);

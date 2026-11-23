@@ -217,7 +217,7 @@
     if (killer && killer.isPlayer) BC.UI.msg('+1  ' + victim.name.toUpperCase() + (head ? '  (cabeça)' : ''), 1.2);
     if (!G.over && (G.score[0] >= G.killLimit || G.score[1] >= G.killLimit)) endMatch();
   };
-  function endMatch() { G.over = true; BC.UI.endMatch(G.score[G.player.team] >= G.killLimit); }
+  function endMatch() { G.over = true; if (BC.MP && BC.MP.sendEnd) BC.MP.sendEnd(); BC.UI.endMatch(G.score[G.player.team] >= G.killLimit); }
   G.feedClear = () => BC.UI && BC.UI.feedClear && BC.UI.feedClear();
 
   // ------------------------------------------------------------ jogador: tiro
