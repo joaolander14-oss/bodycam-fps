@@ -22,6 +22,7 @@ button:hover{background:#2c4a2c}
 @keyframes fade{0%,80%{opacity:1}100%{opacity:0}}
 #bl{position:absolute;left:2.4%;bottom:4.5%;width:21%}
 #bl .lbl{font-size:.75em;opacity:.8;letter-spacing:2px}
+#bl .sbar{height:6px;background:rgba(255,255,255,.15);margin:2px 0 4px;border:1px solid rgba(255,255,255,.35)}#bl .sbar i{display:block;height:100%;width:0;transition:width .15s}#mofill{background:#6fb8e8}#tefill{background:#e8a84a}
 #hpbar{height:9px;background:rgba(255,255,255,.18);margin:3px 0;border:1px solid rgba(255,255,255,.4)}
 #hpfill{display:block;height:100%;width:100%;background:#9ad79a;transition:width .1s}
 #hpn{font-size:1.5em}

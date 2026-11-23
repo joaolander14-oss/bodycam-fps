@@ -105,7 +105,7 @@
         const los = w.los(p.x, p.y + 0.2, p.z, a.x, cy, a.z); if (!los && d > 4) continue;
         let face = 0.35; const fx_ = -Math.sin(a.yaw), fz_ = -Math.cos(a.yaw), dx = p.x - a.x, dz = p.z - a.z, l = Math.hypot(dx, dz) || 1; face = Math.max(0.3, (fx_ * dx + fz_ * dz) / l * 0.5 + 0.5);
         const amount = (1 - d / 26) * 6.5 * face * (los ? 1 : 0.4);
-        if (a.isPlayer) { G.blind = Math.max(G.blind || 0, amount); G.blindMax = G.blind; BC.Audio.ring && BC.Audio.ring(amount * 0.8); } else { a.blindT = Math.max(a.blindT || 0, amount); a.target = null; }
+        if (a.isPlayer) { G.glitch = Math.max(G.glitch, Math.min(1.5, amount * 0.35)); G.blind = Math.max(G.blind || 0, amount); G.blindMax = G.blind; BC.Audio.ring && BC.Audio.ring(amount * 0.8); } else { a.blindT = Math.max(a.blindT || 0, amount); a.target = null; }
       }
       return;
     }

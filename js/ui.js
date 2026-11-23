@@ -109,6 +109,7 @@
   };
   UI.indicator = function (angWorld) { // ângulo mundo→relativo ao olhar
     const P = G.player, rel = Math.atan2(Math.sin(Math.PI + P.yaw - angWorld), Math.cos(Math.PI + P.yaw - angWorld));
+    G.addLocalGlitch(0.5 + Math.sin(rel) * 0.33, 0.5 + Math.cos(rel) * 0.3, 1.1);
     const el = document.createElement('i'); el.style.transform = `rotate(${rel}rad)`; $('indic').appendChild(el); setTimeout(() => el.remove(), 1100);
   };
   UI.killfeed = function (k, v, wid, head) {
@@ -163,6 +164,7 @@
     const t = Math.floor((performance.now() - recStart) / 1000), p = (v) => String(v).padStart(2, '0');
     $('recT').textContent = `${p(Math.floor(t / 3600))}:${p(Math.floor(t / 60) % 60)}:${p(t % 60)}`;
     const P2 = G.player; if (P2 && P2.gren) { const g = BC.GREN[P2.grSel]; $('gren').textContent = P2.gren[P2.grSel] > 0 ? g.short + ' ×' + P2.gren[P2.grSel] + '  [G] lançar · [H] trocar   ' + Object.keys(P2.gren).map((k) => BC.GREN[k].short + ':' + P2.gren[k]).join(' ') : 'sem granadas'; $('stance').textContent = P2.prone > 0.5 ? 'DEITADO' : P2.crouch > 0.5 ? 'AGACHADO' : ''; }
+    $('tefill').style.width = (P.tension || 0).toFixed(0) + '%'; $('tefill').style.background = P.tension > 70 ? '#ff5a4a' : P.tension > 40 ? '#e8a84a' : '#d8d86a'; $('mofill').style.width = (P.morale || 0).toFixed(0) + '%';
     $('hpfill').style.width = P.hp + '%'; $('hpfill').style.background = P.hp < 30 ? '#ff5a4a' : P.hp < 60 ? '#e8c86a' : '#9ad79a'; $('hpn').textContent = Math.ceil(P.hp);
     const w = P.w[P.cur], a = w.mag + '|' + w.reserve + '|' + (P.rl ? 1 : 0); if (a !== lastAmmo) { lastAmmo = a; $('am').textContent = w.mag; $('ar').textContent = '/ ' + w.reserve; $('am').style.color = w.mag <= Math.ceil(w.spec.mag * 0.25) ? '#ff8a6a' : ''; }
     $('scoreA').textContent = G.score[0]; $('scoreB').textContent = G.score[1];

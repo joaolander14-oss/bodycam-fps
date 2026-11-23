@@ -90,7 +90,7 @@
     const P = G.player = {
       isPlayer: true, team: G.myTeam || 0, name: 'VOCÊ · ' + BC.AGENTS[(S.agent || 0) % BC.AGENTS.length].name, x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, onGround: true, r: 0.35, h: 1.78, alive: true, hp: 100, yaw: 0, pitch: 0,
       rc: { p: 0, y: 0 }, crouch: 0, cur: 0, kills: 0, deaths: 0, lastHurt: -99, deadT: 0, bob: 0, stepAcc: 0, adsT: 0, sprintT: 0, swapT: 0, rl: null, sway: { x: 0, y: 0 }, kick: 0, kickR: 0, pumpT: 0,
-      eyeY: 1.4, lastShot: -9, shotIdx: 0, flashT: 0, bloomIdx: 0, hitFlash: 0, sneak: false, inWater: false
+      tension: 15, morale: 70, trY: 0, trP: 0, eyeY: 1.4, lastShot: -9, shotIdx: 0, flashT: 0, bloomIdx: 0, hitFlash: 0, sneak: false, inWater: false
     };
     const lo = (S.loadout && S.loadout.length ? S.loadout : BC.DEFAULT_LOADOUT).slice(0, 2).map((id) => BC.WMAP[id]).filter(Boolean); if (!lo.length) lo.push(BC.WMAP.ak47); G.loadout = lo;
     P.w = lo.map((s) => {
@@ -136,7 +136,7 @@
     P.x = best.x; P.z = best.z; P.y = w.heightAt(P.x, P.z); P.vx = P.vy = P.vz = 0; P.onGround = true;
     P.hp = 100; P.alive = true; P.deadT = 0; P.yaw = 0; P.pitch = 0; P.rc.p = P.rc.y = 0; P.rl = null; P.swapT = 0; P.adsT = 0; P.crouch = 0; P.prone = 0; P.stn = 0; P.proneTog = false; P.eyeY = 1.4; P.fall = 0; P.thr = null; P.gren = { frag: 2, flash: 1, smoke: 1 }; P.grSel = 'frag'; G.blind = 0;
     for (const wp of P.w) { wp.mag = wp.spec.mag; wp.reserve = wp.spec.reserve; }
-    selectWeapon(0, false);
+    selectWeapon(0, false); P.tension = 15; P.morale = 60; if (!first) { G.glitch = 1.6; G.flashScreen = 0.1; }
     for (const t of w.crates) t.t = 0;
   }
   function selectWeapon(i, instant) {
@@ -187,16 +187,28 @@
   // jogo online: o anfitrião decide o dano; o convidado só mostra o efeito
   G.netHurt = function (hp, dmg, fx_, fz_, zone) {
     const P = G.player; if (!P.alive) return;
-    P.hp = hp; P.lastHurt = G.time; BC.Audio.hurt(); G.glitch = Math.min(1, G.glitch + 0.35 + dmg / 80); P.hitFlash = 1;
+    P.hp = hp; P.lastHurt = G.time; G.stress(dmg); BC.Audio.hurt(); G.glitch = Math.min(1, G.glitch + 0.35 + dmg / 80); P.hitFlash = 1;
     BC.UI.indicator(Math.atan2(fx_ - P.x, fz_ - P.z)); BC.UI.lensBlood(Math.min(6, 2 + Math.round(dmg / 25)));
-    if (hp <= 0) { P.hp = 0; aimTog = false; P.alive = false; P.deadT = 0; P.deaths++; P.fall = 0; BC.Audio.death(); fx.pool(P.x, P.y, P.z, dmg); }
+    if (hp <= 0) { P.hp = 0; aimTog = false; P.alive = false; P.deadT = 0; P.deaths++; P.fall = 0; G.glitch = 1.6; BC.Audio.death(); fx.pool(P.x, P.y, P.z, dmg); }
   };
+  G.stress = function (dmg) { const P = G.player; P.tension = Math.min(100, (P.tension || 0) + 12 + dmg * 0.22); P.morale = Math.max(0, (P.morale || 0) - 8 - dmg * 0.1); };
+  G.lg = [];
+  G.addLocalGlitch = function (x, y, a) { G.lg.push({ x, y, a }); if (G.lg.length > 4) G.lg.shift(); };
+  function updateTension(dt) {
+    const P = G.player; let near = 1e9;
+    for (const e of G.actors) { if (e === P || !e.alive || e.team === P.team) continue; const d = Math.hypot(e.x - P.x, e.z - P.z); if (d < near) near = d; }
+    const sh = G.time - P.lastHurt, ss = G.time - P.lastShot, calm = near > 50 && sh > 4 && ss > 3;
+    let rise = 0; if (near < 35) rise += (35 - near) / 35 * 6; if (ss < 1) rise += 4; if (sh < 2.5) rise += 7; if (P.hp < 35) rise += 3; if (G.blind > 0.2) rise += 6;
+    rise *= 1.25 - 0.5 * (P.morale || 0) / 100;
+    P.tension = BC.clamp((P.tension || 0) + (rise > 0.5 ? rise : -(calm ? 7 : near > 35 ? 2.5 : 0.6) * (0.6 + 0.8 * (P.morale || 0) / 100)) * dt, 0, 100);
+    P.morale = BC.clamp((P.morale || 0) + (calm ? 5 : near > 40 && sh > 3 ? 1.2 : -rise * 0.35) * dt, 0, 100);
+  }
   G.netRespawn = function () { if (G.player && !G.player.alive) spawnPlayer(false); };
   G.hurtPlayer = function (dmg, from, zone, wid) {
     const P = G.player; if (!P.alive || G.net === 'guest') return false;
-    P.hp -= dmg; P.lastHurt = G.time; BC.Audio.hurt(); G.glitch = Math.min(1, G.glitch + 0.35 + dmg / 80); P.hitFlash = 1;
+    P.hp -= dmg; P.lastHurt = G.time; G.stress(dmg); BC.Audio.hurt(); G.glitch = Math.min(1, G.glitch + 0.35 + dmg / 80); P.hitFlash = 1;
     BC.UI.indicator(Math.atan2(from.x - P.x, from.z - P.z)); BC.UI.lensBlood(Math.min(6, 2 + Math.round(dmg / 25)));
-    if (P.hp <= 0) { P.hp = 0; aimTog = false; P.alive = false; P.deadT = 0; P.deaths++; P.fall = 0; BC.Audio.death(); fx.pool(P.x, P.y, P.z, dmg); G.onKill(from, P, wid, zone === 'head'); return true; }
+    if (P.hp <= 0) { P.hp = 0; aimTog = false; P.alive = false; P.deadT = 0; P.deaths++; P.fall = 0; G.glitch = 1.6; BC.Audio.death(); fx.pool(P.x, P.y, P.z, dmg); G.onKill(from, P, wid, zone === 'head'); return true; }
     return false;
   };
   G.onKill = function (killer, victim, wid, head) {
@@ -210,7 +222,7 @@
 
   // ------------------------------------------------------------ jogador: tiro
   function camBasis() {
-    const P = G.player; _e.set(P.pitch + P.rc.p + (P.aimP || 0), P.yaw + P.rc.y + (P.aimY || 0), 0, 'YXZ'); _q.setFromEuler(_e);
+    const P = G.player; _e.set(P.pitch + P.rc.p + (P.aimP || 0) + (P.trP || 0), P.yaw + P.rc.y + (P.aimY || 0) + (P.trY || 0), 0, 'YXZ'); _q.setFromEuler(_e);
     return { f: new T.Vector3(0, 0, -1).applyQuaternion(_q), r: new T.Vector3(1, 0, 0).applyQuaternion(_q), u: new T.Vector3(0, 1, 0).applyQuaternion(_q) };
   }
   function eyePos() { const P = G.player; return { x: P.x, y: P.y + P.eyeY, z: P.z }; }
@@ -236,7 +248,7 @@
     // recuo (padrão fixo) — vira deslocamento que decai
     const pat = s.recoil[Math.min(P.shotIdx, s.recoil.length - 1)], k = 1 - 0.35 * P.adsT;
     P.rc.p += BC.rad(pat[0] * k * (0.92 + G.rng() * 0.16)); P.rc.y += BC.rad(pat[1] * k + (G.rng() - 0.5) * 0.1);
-    P.shotIdx++; P.bloomIdx++; P.lastShot = G.time;
+    P.shotIdx++; P.bloomIdx++; P.lastShot = G.time; P.tension = Math.min(100, P.tension + 0.9); G.addLocalGlitch(0.5 + (G.rng() - 0.5) * 0.08, 0.46, 0.55);
     P.kick = Math.min(1.6, P.kick + 1); P.kickR += s.recoilKick * (1 - 0.4 * P.adsT);
     P.flashT = 0.05; if (s.sup) muzzleLight.intensity = 0; muzzleLight.position.set(o.x + b.f.x * 1.2, o.y + b.f.y * 1.2 - 0.1, o.z + b.f.z * 1.2); muzzleLight.intensity = s.sup ? 0 : 1.4;
     G.flashScreen = 0.03;
@@ -378,13 +390,16 @@
     const fov = BC.lerp(hipV, adsV, P.adsT); G.curFov = fov; G.hipV = hipV;
     camera.fov = fov; camera.updateProjectionMatrix();
     const hs = Math.hypot(P.vx, P.vz), mv = Math.min(1.5, hs / WALK), ads = P.adsT, sprint = P.sprintT;
-    const bobA = (0.035 + 0.04 * sprint) * mv * (1 - 0.85 * ads), ph = P.bob;
+    const tn = Math.pow((P.tension || 0) / 100, 1.15), tt = G.time;
+    P.trY = (Math.sin(tt * 7.3) * 0.55 + Math.sin(tt * 13.1 + 1) * 0.3 + Math.sin(tt * 23.7 + 2) * 0.15) * 0.013 * tn; P.trP = (Math.sin(tt * 6.1 + 0.5) * 0.5 + Math.sin(tt * 11.9 + 3) * 0.35 + Math.sin(tt * 19.3) * 0.15) * 0.011 * tn;
+    const bobA = (0.035 + 0.04 * sprint) * mv * (1 - 0.85 * ads) * (1 + tn * 1.1), ph = P.bob;
     let ex = P.x + Math.cos(P.yaw) * Math.sin(ph) * bobA * 0.8, ez = P.z - Math.sin(P.yaw) * Math.sin(ph) * bobA * 0.8;
     let ey = P.y + P.eyeY + (0.5 - 0.5 * Math.cos(2 * ph)) * bobA * 1.3 - Math.pow(Math.max(0, Math.cos(2 * ph)), 6) * bobA * 0.35 - (P.alive ? 0 : P.fall * (P.eyeY - 0.25)) + (G.time * 0.0);
     ey += Math.sin(G.time * 1.3) * 0.004 * (1 - ads); // respiração
     if (G.shake > 0.01) { ex += (Math.random() - 0.5) * G.shake * 0.12; ey += (Math.random() - 0.5) * G.shake * 0.12; ez += (Math.random() - 0.5) * G.shake * 0.12; }
+    const sk = tn * 0.012; ex += (Math.sin(tt * 17.1) + Math.sin(tt * 9.3)) * sk; ey += (Math.sin(tt * 14.7 + 1) + Math.sin(tt * 8.1)) * sk; ez += (Math.sin(tt * 15.3 + 2) + Math.sin(tt * 10.7)) * sk;
     camera.position.set(ex, ey, ez);
-    let pitch = P.pitch + Math.cos(2 * ph) * 0.007 * mv * (1 - ads) + P.rc.p - BC.clamp((P.stnVel || 0) * 0.06, -0.12, 0.12), yaw = P.yaw + P.rc.y, roll = Math.sin(ph) * 0.012 * mv * (1 - ads) + (P.alive ? 0 : P.fall * 0.9) + Math.sin(ph * 0.5) * 0.03 * P.prone * mv + (P.stnVel || 0) * 0.015;
+    let pitch = P.pitch + Math.cos(2 * ph) * 0.007 * mv * (1 - ads) + P.rc.p - BC.clamp((P.stnVel || 0) * 0.06, -0.12, 0.12), yaw = P.yaw + P.rc.y, roll = Math.sin(ph) * 0.012 * mv * (1 - ads) + Math.sin(tt * 2.3) * 0.03 * tn + Math.sin(tt * 11) * 0.006 * tn + (P.alive ? 0 : P.fall * 0.9) + Math.sin(ph * 0.5) * 0.03 * P.prone * mv + (P.stnVel || 0) * 0.015;
     if (!P.alive) pitch += P.fall * 0.5;
     _e.set(BC.clamp(pitch, -1.5, 1.5), yaw, roll, 'YXZ'); camera.quaternion.setFromEuler(_e);
     // nascer/pôr do sol, sol segue o jogador (sombras)
@@ -420,6 +435,7 @@
       const pxs = (window.innerHeight / 2) / Math.tan(BC.rad(fov) / 2), ox = -Math.tan(P.aimY) * pxs, oy = -Math.tan(P.aimP) * pxs;
       BC.UI.setAim(P.alive ? ox : 0, P.alive ? oy : 0);
     }
+    rx += P.trP * 2.2; ry += P.trY * 2.2; px += Math.sin(tt * 12.3) * 0.004 * tn; py += Math.sin(tt * 10.1) * 0.004 * tn;
     // coice
     pz += P.kick * 0.03 * (1 - 0.5 * ads); py += P.kick * 0.006; rx += P.kickR * 1.6 * (1 - 0.3 * ads);
     // sacar / trocar de arma: abaixa rápido e levanta com leve excesso (mão esquerda atrasa)
@@ -503,7 +519,7 @@
     G.frame = (G.frame || 0) + 1; // avanço de simulação (usado pelo laço e pelos testes)
     G.time += dt; G.matchT += dt;
     if (G.running) {
-      updatePlayer(dt); if (G.net && BC.MP) BC.MP.tick(dt);
+      updatePlayer(dt); if (G.player.alive) updateTension(dt); for (let i = G.lg.length - 1; i >= 0; i--) { G.lg[i].a -= dt * 3.2; if (G.lg[i].a <= 0) G.lg.splice(i, 1); } if (G.net && BC.MP) BC.MP.tick(dt);
       for (const b of G.bots) b.update(dt);
       BC.Gren.update(dt); G.shake = Math.max(0, (G.shake || 0) * Math.exp(-4.5 * dt)); G.blind = Math.max(0, (G.blind || 0) - dt);
       fx.update(dt, G.world);
@@ -514,7 +530,7 @@
   G.renderFrame = function (dt) {
     if (!G.player) return;
     updateCamera(dt || 0.016);
-    post.render(scene, camera, vm.length ? vmScene : null, vmCam, { time: G.time, glitch: G.glitch + (G.player.alive ? 0 : 0.15), damage: G.player.hitFlash * 0.5 + (G.player.hp < 30 ? (30 - G.player.hp) / 80 : 0), dead: G.player.alive ? 0 : BC.smooth(0, 1, G.player.fall) * 0.85, flash: G.flashScreen * 1.5 + Math.min(1.6, (G.blind || 0) * 0.55) });
+    post.render(scene, camera, vm.length ? vmScene : null, vmCam, { time: G.time, glitch: G.glitch + (G.player.alive ? 0 : 0.15) + Math.min(1.1, (G.blind || 0) * 0.4), damage: G.player.hitFlash * 0.5 + (G.player.hp < 30 ? (30 - G.player.hp) / 80 : 0), dead: G.player.alive ? 0 : BC.smooth(0, 1, G.player.fall) * 0.85, lg: G.lg, flash: G.flashScreen * 1.5 + Math.min(1.6, (G.blind || 0) * 0.55) });
     BC.UI.frame(dt || 0.016);
   };
   function loop(now) {

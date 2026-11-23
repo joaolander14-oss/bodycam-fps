@@ -43,6 +43,25 @@
       V('deagle357', 'IMI Desert Eagle .357', 'deagle', { cal: '357', v0: 440, mag: 9, mass: 1.7 }, ''), V('deagle44', 'IMI Desert Eagle .44 Magnum', 'deagle', { cal: '44mag', v0: 430, mag: 8, mass: 1.9 }, ''),
       V('benelli_m4', 'Benelli M4 Super 90', 'benelli', { mag: 7, mass: 3.8, rpm: 190 }, ''), V('rem870mcs', 'Remington 870 MCS', 'rem870t', { mag: 6, mass: 3.0 }, ''), V('spas12', 'Franchi SPAS-12', 'moss500', { mag: 8, mass: 4.4, rpm: 150, origin: 'Itália' }, '')
     );
+    rows.push(
+      // ---- +50 (150 no total): mais versões reais, calibres e supressores ----
+      sd('m16a4sd', 'Colt M16A4 Suprimida', 'm16a4', { v0: 300 }), sd('tavorsd', 'IWI Tavor SD', 'tavor', { v0: 310 }), sd('augsd', 'Steyr AUG SD', 'aug', { v0: 320 }), sd('famassd', 'FAMAS SD', 'famas', { v0: 310 }), sd('l85sd', 'L85A2 Suprimida', 'l85', { v0: 310 }),
+      sd('m45sd', 'Carl Gustaf M/45 Suprimida', 'm45', { v0: 280 }), sd('skorpionsd', 'Škorpion vz. 61 Suprimida', 'skorpion', { v0: 270 }), sd('hipowersd', 'FN Hi-Power Suprimida', 'hipower', { v0: 290 }), sd('five7sd', 'FN Five-seveN Suprimida', 'five7', { v0: 480 }),
+      sd('mp5nsd', 'H&K MP5N SD', 'mp5n', { v0: 285 }), sd('g3a3sd', 'H&K G3 Suprimida', 'g3a3', { v0: 330 }), sd('falsd', 'FN FAL Suprimida', 'fal', { v0: 330 }),
+      V('m4_300', 'Colt M4 .300 Blackout', 'm4a1', { cal: '300blk', v0: 600, mass: 3.2 }, ''), V('ak12', 'Kalashnikov AK-12', 'ak74m', { rpm: 700, origin: 'Rússia', mass: 3.3 }, ''), V('ak308', 'Kalashnikov AK-308', 'akm', { cal: '762x51', v0: 840, mass: 4.2, origin: 'Rússia' }, ''),
+      V('ar10', 'ArmaLite AR-10', 'm16a4', { cal: '762x51', v0: 840, mass: 4.1, rpm: 650 }, ''), V('galil', 'IMI Galil ARM', 'akm', { cal: '556', v0: 950, origin: 'Israel', mass: 4.3 }, ''), 
+      V('sks', 'SKS-45', 'akm', { auto: 0, rpm: 400, mag: 10, mass: 3.85, v0: 735, len: 1.02 }, ''), V('g36', 'H&K G36', 'm4a1', { origin: 'Alemanha', v0: 920, mass: 3.6, rpm: 750 }, ''), 
+      V('mp5k', 'H&K MP5K', 'mp5', { mass: 2.1, len: 0.325, rpm: 900 }, ''), V('uzipro', 'IMI Uzi Pro', 'uzi', { mass: 2.4, rpm: 1100 }, ''), V('miniuzi', 'Mini Uzi', 'uzi', { mass: 2.0, rpm: 950, len: 0.36 }, ''),
+      V('ump9', 'H&K UMP9', 'ump45', { cal: '9x19', v0: 400, mag: 30, mass: 2.3 }, ''), V('mac10_9', 'Ingram MAC-10 9 mm', 'mac10', { cal: '9x19', v0: 365, rpm: 1100 }, ''),
+      V('p90', 'FN P90', 'mp7', { cal: '57x28', origin: 'Bélgica', mag: 50, v0: 715, rpm: 900, mass: 2.6 }, ''), V('bizon', 'PP-19 Bizon', 'skorpion', { cal: '9x18', origin: 'Rússia', mag: 64, rpm: 700, mass: 2.9, v0: 330 }, ''),
+      V('ppsh41', 'PPSh-41', 'sten', { cal: '762x25', origin: 'URSS', mag: 71, rpm: 900, mass: 3.6, v0: 500 }, ''), V('mp40', 'MP 40', 'sten', { cal: '9x19', origin: 'Alemanha', rpm: 500, mass: 4.0, v0: 380 }, ''), V('thompson', 'Thompson M1A1', 'm45', { cal: '45acp', origin: 'EUA', rpm: 700, mag: 30, mass: 4.7, v0: 280 }, ''),
+      V('glock22', 'Glock 22', 'glock17', { cal: '40sw', mag: 15, v0: 335 }, ''), V('glock21', 'Glock 21', 'glock17', { cal: '45acp', mag: 13, v0: 260 }, ''), V('glock18', 'Glock 18C', 'glock17', { auto: 1, rpm: 1200, mag: 33 }, ''),
+      V('px4', 'Beretta Px4 Storm', 'beretta92', { cal: '40sw', mag: 14, v0: 330 }, ''), V('cz75', 'CZ 75', 'hipower', { origin: 'Tchecoslováquia', mag: 16 }, ''), V('p226', 'SIG P226', 'usp40', { cal: '9x19', origin: 'Suíça', mag: 15, v0: 365 }, ''), V('hk45', 'H&K HK45', 'usp40', { cal: '45acp', mag: 10, v0: 275 }, ''),
+      V('python6', 'Colt Python 6"', 'python', { mass: 1.2, len: 0.28 }, ''), V('sw629', 'S&W Model 629', 'm29', { mass: 1.5 }, ''), V('blackhawk', 'Ruger Blackhawk', 'saa', { mass: 1.2, v0: 260 }, ''), V('nagant', 'Nagant M1895', 'detective', { origin: 'Rússia', mag: 7, v0: 330 }, ''),
+      V('mossberg590', 'Mossberg 590A1', 'moss500', { mag: 9 }, ''), V('ksg', 'Kel-Tec KSG', 'benelli', { mag: 14, mass: 3.0, rpm: 120 }, ''), V('sawedoff', 'Espingarda de cano serrado', 'coach', { mass: 2.2, len: 0.6 }, ''),
+      V('m107', 'Barrett M107', 'm82', { mass: 12.9 }, ''), V('pgm', 'PGM Hécate II', 'm82', { origin: 'França', mass: 13.8 }, ''), V('trg42', 'Sako TRG-42', 'awm', { origin: 'Finlândia', mass: 5.9 }, ''), 
+      V('pkm', 'PKM', 'm60', { cal: '762x54r', origin: 'URSS', mag: 100, rpm: 650, mass: 8.4, v0: 825 }, ''), V('m249', 'M249 SAW', 'm60', { cal: '556', mag: 200, rpm: 850, mass: 7.5, v0: 915 }, ''), V('rpk74', 'RPK-74', 'm60', { cal: '545', origin: 'URSS', mag: 45, rpm: 600, mass: 4.7, v0: 960 }, ''), V('mg3', 'Rheinmetall MG3', 'm60', { cal: '792', origin: 'Alemanha', mag: 120, rpm: 1100, mass: 11.5, v0: 820 }, '')
+    );
     return rows;
   };
 })();

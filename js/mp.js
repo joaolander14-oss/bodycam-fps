@@ -4,7 +4,9 @@
   const BC = window.BC, G = BC.G, T = THREE;
   const MP = BC.MP = { role: null, code: null, players: [], myId: 0, ver: 1, status: '', listeners: {} };
   const PREFIX = 'bodycam-';
-  const ICE = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun1.l.google.com:19302' }, { urls: 'stun:global.stun.twilio.com:3478' }, { urls: 'stun:stun.cloudflare.com:3478' }] };
+  const ICE = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun1.l.google.com:19302' }, { urls: 'stun:global.stun.twilio.com:3478' }, { urls: 'stun:stun.cloudflare.com:3478' },
+    // retransmissão (TURN) para redes que bloqueiam a conexão direta (dados móveis, roteadores restritivos)
+    { urls: ['turn:openrelay.metered.ca:80', 'turn:openrelay.metered.ca:443', 'turns:openrelay.metered.ca:443?transport=tcp'], username: 'openrelayproject', credential: 'openrelayproject' }], iceCandidatePoolSize: 4 };
   const $ = (id) => document.getElementById(id);
   let peer = null, conns = [], toHost = null, remotes = [], acc = 0, endSent = false;
   const nets = new Map(); // convidado: chave -> NetActor
@@ -159,6 +161,7 @@
   const CFGK = ['map', 'mapSize', 'size', 'skin', 'enemy', 'farda', 'fardaE', 'diff'];
   MP.hostBegin = function () {
     if (MP.role !== 'host') return;
+    if (MP.players.length < 2 && !confirm('Ninguém entrou na sala ainda. Iniciar mesmo assim (só com bots)?')) { el('menu').classList.remove('hidden'); return; }
     const S = G.settings, cfg = {}; for (const k of CFGK) cfg[k] = S[k];
     MP.playing = true; G.net = 'host'; G.myTeam = 0; endSent = false; acc = 0;
     MP.players.forEach((p, i) => { if (p.conn) sendTo(p.conn, { t: 'start', cfg, id: i, team: p.team, names: MP.players.map((q) => q.name), teams: MP.players.map((q) => q.team) }); });
@@ -218,10 +221,12 @@
   }
   // chamado pela interface quando chega 'start' (já com bandeiras carregadas)
   MP.guestBegin = function (d) {
+    try {
     MP.playing = true; G.net = 'guest'; G.myTeam = d.team; acc = 0; nets.clear();
     MP.names = d.names; MP.teams = d.teams;
     G.start(d.cfg); G.net = 'guest';
     G.player.name = MP.players[MP.myId] ? MP.players[MP.myId].name : G.player.name;
+    } catch (e) { console.error(e); alert('Erro ao iniciar a partida online: ' + e.message); MP.leave(); el('menu').classList.remove('hidden'); }
   };
   function guestSnap(d) {
     if (!G.running || G.net !== 'guest') return;
