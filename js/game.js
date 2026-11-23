@@ -42,6 +42,15 @@
     }));
     sky.renderOrder = -10; sky.frustumCulled = false; scene.add(sky);
     post = G.post = new BC.Post(renderer); fx = G.fx = new BC.Fx(scene); BC.Gren.init(scene);
+    // tudo que dá clarão (tiros inimigos, granadas, explosões) causa um pequeno chiado onde aparece na tela
+    const _fl = fx.flash.bind(fx);
+    fx.flash = function (p, sz) {
+      _fl(p, sz);
+      try {
+        const dx = p.x - camera.position.x, dy = p.y - camera.position.y, dz = p.z - camera.position.z, dist = Math.hypot(dx, dy, dz), v = new T.Vector3(p.x, p.y, p.z).project(camera);
+        if (v.z < 1 && Math.abs(v.x) < 1.15 && Math.abs(v.y) < 1.15) { const a = Math.min(0.3, 0.07 + (sz || 1) * 0.04) / (1 + dist / 70); if (a > 0.03) G.addLocalGlitch(v.x * 0.5 + 0.5, v.y * 0.5 + 0.5, a); }
+      } catch (e) { }
+    };
 
     // modelos de arma (1ª pessoa) — criados uma vez por skin ao iniciar
     G.resize(); window.addEventListener('resize', G.resize);
@@ -114,10 +123,11 @@
     // atores
     G.actors = [P]; G.bots = [];
     const n = S.size, rng = G.rng;
-    if (G.net !== 'guest') for (let team = 0; team < 2; team++) for (let i = 0; i < (team === 0 ? n - 1 : n); i++) { const b = new BC.Bot(G, team, i + team * 20); G.bots.push(b); G.actors.push(b); }
+    if (G.net !== 'guest' && S.mode !== 'hunt') for (let team = 0; team < 2; team++) for (let i = 0; i < (team === 0 ? n - 1 : n); i++) { const b = new BC.Bot(G, team, i + team * 20); G.bots.push(b); G.actors.push(b); }
     aimTog = false; G.killLimit = Math.max(30, S.size * 5); G.score = [0, 0]; G.time = 0; G.over = false; G.running = true; G.matchT = 0;
     spawnPlayer(true);
     for (const b of G.bots) { b.respawnT = 0.1 + rng() * 1.5; }
+    BC.Modes.setup();
     BC.Gren.clear(); G.blind = 0; G.shake = 0; BC.Audio.init(); BC.Audio.ambient(def.ambient); BC.Audio.setVolume(S.vol); BC.Audio.beep(1200);
     G.feedClear();
     document.getElementById('cam').classList.remove('hidden');
@@ -212,11 +222,12 @@
     return false;
   };
   G.onKill = function (killer, victim, wid, head) {
-    if (killer && killer !== victim && killer.team >= 0 && killer.team !== victim.team) { G.score[killer.team]++; killer.kills = (killer.kills || 0) + 1; }
+    if ((!G.mode || G.mode === 'tdm') && killer && killer !== victim && killer.team >= 0 && killer.team !== victim.team) { G.score[killer.team]++; killer.kills = (killer.kills || 0) + 1; }
     BC.UI.killfeed(killer, victim, wid, head);
     if (killer && killer.isPlayer) BC.UI.msg('+1  ' + victim.name.toUpperCase() + (head ? '  (cabeça)' : ''), 1.2);
     if (!G.over && (G.score[0] >= G.killLimit || G.score[1] >= G.killLimit)) endMatch();
   };
+  G.endMatch = () => endMatch();
   function endMatch() { G.over = true; if (BC.MP && BC.MP.sendEnd) BC.MP.sendEnd(); BC.UI.endMatch(G.score[G.player.team] >= G.killLimit); }
   G.feedClear = () => BC.UI && BC.UI.feedClear && BC.UI.feedClear();
 
@@ -248,7 +259,7 @@
     // recuo (padrão fixo) — vira deslocamento que decai
     const pat = s.recoil[Math.min(P.shotIdx, s.recoil.length - 1)], k = 1 - 0.35 * P.adsT;
     P.rc.p += BC.rad(pat[0] * k * (0.92 + G.rng() * 0.16)); P.rc.y += BC.rad(pat[1] * k + (G.rng() - 0.5) * 0.1);
-    P.shotIdx++; P.bloomIdx++; P.lastShot = G.time; P.tension = Math.min(100, P.tension + 0.9); G.addLocalGlitch(0.5 + (G.rng() - 0.5) * 0.08, 0.46, 0.55);
+    P.shotIdx++; P.bloomIdx++; P.lastShot = G.time; P.tension = Math.min(100, P.tension + 0.9); G.addLocalGlitch(0.5 + (G.rng() - 0.5) * 0.08, 0.46, 0.2);
     P.kick = Math.min(1.6, P.kick + 1); P.kickR += s.recoilKick * (1 - 0.4 * P.adsT);
     P.flashT = 0.05; if (s.sup) muzzleLight.intensity = 0; muzzleLight.position.set(o.x + b.f.x * 1.2, o.y + b.f.y * 1.2 - 0.1, o.z + b.f.z * 1.2); muzzleLight.intensity = s.sup ? 0 : 1.4;
     G.flashScreen = 0.03;
@@ -521,6 +532,7 @@
     if (G.running) {
       updatePlayer(dt); if (G.player.alive) updateTension(dt); for (let i = G.lg.length - 1; i >= 0; i--) { G.lg[i].a -= dt * 3.2; if (G.lg[i].a <= 0) G.lg.splice(i, 1); } if (G.net && BC.MP) BC.MP.tick(dt);
       for (const b of G.bots) b.update(dt);
+      BC.Modes.update(dt);
       BC.Gren.update(dt); G.shake = Math.max(0, (G.shake || 0) * Math.exp(-4.5 * dt)); G.blind = Math.max(0, (G.blind || 0) - dt);
       fx.update(dt, G.world);
       BC.Audio.ambientTick(dt);

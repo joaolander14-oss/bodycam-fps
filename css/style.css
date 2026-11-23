@@ -85,3 +85,6 @@ input[type=range]{padding:0;width:140px}
 #rdot{position:fixed;left:50%;top:50%;transform:translate(var(--ax,0px),var(--ay,0px));width:6px;height:6px;margin:-3px;border-radius:50%;background:#ff2a2a;box-shadow:0 0 10px 3px rgba(255,40,40,.7);pointer-events:none}#rdot.holo{width:46px;height:46px;margin:-23px;background:transparent;border:2px solid #ff3030;box-shadow:0 0 8px rgba(255,40,40,.6)}#rdot.holo::after{content:'';position:absolute;left:50%;top:50%;width:3px;height:3px;margin:-1.5px;border-radius:50%;background:#ff3030}
 
 #lens{position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:5}#gren{position:absolute;left:50%;bottom:7.6%;transform:translateX(-50%);font-size:.78em;opacity:.85;letter-spacing:1px;white-space:nowrap}#stance{position:absolute;left:2.4%;bottom:13%;font-size:.95em;letter-spacing:3px;color:#ffe9a0}
+
+#bl{display:none}
+#pts{position:absolute;left:50%;top:9%;transform:translateX(-50%);font-size:1.05em;letter-spacing:2px;text-shadow:0 0 4px #000;white-space:nowrap}#pts small{opacity:.7;font-size:.75em}

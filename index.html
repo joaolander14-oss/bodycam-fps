@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>BODYCAM — Zona de Combate</title>
-<link rel="stylesheet" href="css/style.css?v=3">
+<link rel="stylesheet" href="css/style.css?v=4">
 </head>
 <body>
 <div id="game"></div>
@@ -21,7 +21,7 @@
     <div id="ammo"><b id="am">30</b><span id="ar">/ 150</span></div><div id="wmode">AUTO</div>
   </div>
   <div id="wlist"></div><div id="gren"></div><div id="stance"></div>
-  <div id="indic"></div>
+  <div id="indic"></div><div id="pts"></div>
     <div id="lowbat">PRESSIONE TAB: PLACAR</div>
   <div id="dead" class="hidden"><div class="big">SINAL PERDIDO</div><div class="small">Reconectando câmera…</div></div>
 </div>
@@ -40,6 +40,7 @@
     <h3>2 · SEU UNIFORME / BANDEIRA <input id="skSearch" placeholder="buscar país…" style="margin-left:14px;background:#0c150d;color:#e2f2e2;border:1px solid #3c5f3c;padding:4px 8px;font:inherit"></h3><div id="skins" class="cards small" style="max-height:340px;overflow:auto;padding-right:6px"></div>
     <h3>4 · OPÇÕES</h3>
     <div class="opts">
+      <label>Modo de jogo <select id="oMode"></select></label>
       <label>Time inimigo <select id="oEnemy"></select></label>
       <label>Dificuldade <select id="oDiff"></select></label>
       <label>Soldados por time <select id="oSize"><option value="4">4 × 4</option><option value="8">8 × 8</option><option value="12">12 × 12</option><option value="16">16 × 16</option><option value="24">24 × 24</option><option value="32">32 × 32</option></select></label>
@@ -98,10 +99,12 @@
 <script src="js/fx.js?v=2"></script>
 <script src="js/fx3.js?v=1"></script>
 <script src="js/grenades.js?v=2"></script>
-<script src="js/bots.js?v=1"></script>
-<script src="js/game.js?v=10"></script>
-<script src="js/ui.js?v=9"></script>
-<script src="js/mp.js?v=4"></script>
+<script src="js/bots.js?v=2"></script>
+<script src="js/game.js?v=11"></script>
+<script src="js/ui.js?v=10"></script>
+<script src="js/animals.js?v=1"></script>
+<script src="js/modes.js?v=1"></script>
+<script src="js/mp.js?v=5"></script>
 <script src="js/tests.js?v=1"></script>
 <script>BC.UI.boot();</script>
 </body>

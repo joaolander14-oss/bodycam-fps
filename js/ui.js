@@ -33,6 +33,7 @@
     BC.TEAMS.forEach((t, i) => { const o = document.createElement('option'); o.value = i; o.textContent = t.name; $('oEnemy').appendChild(o); });
     if (S.skin >= BC.TEAMS.length) S.skin = 4;
     if (S.enemy === undefined || S.enemy === S.skin) S.enemy = S.skin === 1 ? 0 : 1; $('oEnemy').value = S.enemy;
+    for (const [k, n] of BC.Modes.list) { const o = document.createElement('option'); o.value = k; o.textContent = n; $('oMode').appendChild(o); } $('oMode').value = S.mode || 'tdm';
     for (const k in BC.DIFF) { const o = document.createElement('option'); o.value = k; o.textContent = BC.DIFF[k].name; $('oDiff').appendChild(o); }
     $('oDiff').value = S.diff; $('oSize').value = S.size; $('oMapSize').value = S.mapSize || 'grande'; $('oQual').value = S.quality;
     $('oFov').value = S.fov; $('oSens').value = Math.round(S.sens * 100); $('oVol').value = Math.round(S.vol * 100); $('oDot').checked = S.dot;
@@ -40,7 +41,7 @@
     sync();
     ['oFov', 'oSens', 'oVol'].forEach((id) => $(id).addEventListener('input', sync));
     const collect = UI.collect = () => {
-      S.diff = $('oDiff').value; S.farda = $('oFarda').value; S.fardaE = $('oFardaE').value; S.size = +$('oSize').value; S.mapSize = $('oMapSize').value; S.quality = $('oQual').value; S.fov = +$('oFov').value; S.sens = $('oSens').value / 100; S.vol = $('oVol').value / 100; S.enemy = +$('oEnemy').value; if (S.enemy === S.skin) S.enemy = (S.skin + 1) % BC.TEAMS.length;
+      S.mode = $('oMode').value; S.diff = $('oDiff').value; S.farda = $('oFarda').value; S.fardaE = $('oFardaE').value; S.size = +$('oSize').value; S.mapSize = $('oMapSize').value; S.quality = $('oQual').value; S.fov = +$('oFov').value; S.sens = $('oSens').value / 100; S.vol = $('oVol').value / 100; S.enemy = +$('oEnemy').value; if (S.enemy === S.skin) S.enemy = (S.skin + 1) % BC.TEAMS.length;
     };
     $('play').onclick = () => {
       if (BC.MP) BC.MP.leave(); collect();
@@ -109,7 +110,7 @@
   };
   UI.indicator = function (angWorld) { // ângulo mundo→relativo ao olhar
     const P = G.player, rel = Math.atan2(Math.sin(Math.PI + P.yaw - angWorld), Math.cos(Math.PI + P.yaw - angWorld));
-    G.addLocalGlitch(0.5 + Math.sin(rel) * 0.33, 0.5 + Math.cos(rel) * 0.3, 1.1);
+    G.addLocalGlitch(0.5 + Math.sin(rel) * 0.33, 0.5 + Math.cos(rel) * 0.3, 0.7);
     const el = document.createElement('i'); el.style.transform = `rotate(${rel}rad)`; $('indic').appendChild(el); setTimeout(() => el.remove(), 1100);
   };
   UI.killfeed = function (k, v, wid, head) {
@@ -154,6 +155,10 @@
     if (!G.running || G.over) return;
     $('pause').classList.toggle('hidden', locked); G.paused = !locked && !G.net;
   };
+  UI.endHunt = function (k, n, pts) {
+    $('endT').textContent = k >= n ? 'CAÇA COMPLETA' : 'FIM DA CAÇA'; $('endT').style.color = '#9fe6a3';
+    $('endS').textContent = 'Animais abatidos: ' + k + ' de ' + n + ' · pontos: ' + pts; $('end').classList.remove('hidden'); if (document.exitPointerLock) document.exitPointerLock();
+  };
   UI.endMatch = function (win) {
     $('endT').textContent = win ? 'VITÓRIA' : 'DERROTA'; $('endT').style.color = win ? '#9fe6a3' : '#ff8a7a';
     $('endS').textContent = G.teamDefs[0].name + ' ' + G.score[0] + ' × ' + G.score[1] + ' ' + G.teamDefs[1].name + ' · seus abates: ' + G.player.kills + ' · mortes: ' + G.player.deaths;
@@ -167,7 +172,9 @@
     $('tefill').style.width = (P.tension || 0).toFixed(0) + '%'; $('tefill').style.background = P.tension > 70 ? '#ff5a4a' : P.tension > 40 ? '#e8a84a' : '#d8d86a'; $('mofill').style.width = (P.morale || 0).toFixed(0) + '%';
     $('hpfill').style.width = P.hp + '%'; $('hpfill').style.background = P.hp < 30 ? '#ff5a4a' : P.hp < 60 ? '#e8c86a' : '#9ad79a'; $('hpn').textContent = Math.ceil(P.hp);
     const w = P.w[P.cur], a = w.mag + '|' + w.reserve + '|' + (P.rl ? 1 : 0); if (a !== lastAmmo) { lastAmmo = a; $('am').textContent = w.mag; $('ar').textContent = '/ ' + w.reserve; $('am').style.color = w.mag <= Math.ceil(w.spec.mag * 0.25) ? '#ff8a6a' : ''; }
-    $('scoreA').textContent = G.score[0]; $('scoreB').textContent = G.score[1];
+    if (G.hunt) { const l = Math.ceil(G.hunt.left || 0); $('scoreA').textContent = Math.floor(G.score[0]); $('scoreB').textContent = Math.floor(l / 60) + ':' + String(l % 60).padStart(2, '0'); $('timeL').textContent = ' pts'; }
+    else { $('scoreA').textContent = Math.floor(G.score[0]); $('scoreB').textContent = Math.floor(G.score[1]); $('timeL').textContent = '/' + G.killLimit; }
+    if ((G.frame || 0) % 6 === 0) $('pts').innerHTML = BC.Modes.hudText();
     const hd = ((-P.yaw * 180 / Math.PI) % 360 + 360) % 360, dirs = ['N', 'NE', 'L', 'SE', 'S', 'SO', 'O', 'NO'];
     $('compass').textContent = dirs[Math.round(hd / 45) % 8] + ' ' + String(Math.round(hd) % 360).padStart(3, '0') + '°';
     $('gps').textContent = `${(23.5505 + P.z * 9e-6).toFixed(5)}°S ${(46.6333 + P.x * 9e-6).toFixed(5)}°O · ALT ${(P.y + 12).toFixed(0)}m`;

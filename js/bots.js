@@ -122,6 +122,10 @@
 
   B.pickWp = function () {
     const G = this.G, w = G.world, rng = G.rng, side = this.team === 0 ? -1 : 1, H = w.play;
+    if (G.points && G.points.length && rng() < 0.85) { // modos de objetivo: vai para um ponto (prefere os que o time ainda não domina)
+      const mine = this.team, list = G.points.filter((q) => q.owner !== mine), pool = list.length && rng() < 0.75 ? list : G.points, q = pool[(rng() * pool.length) | 0], a = rng() * 6.28, r = Math.sqrt(rng()) * q.r * 0.8;
+      this.wp = { x: q.x + Math.cos(a) * r, z: q.z + Math.sin(a) * r }; this.wpT = 25; this.sprint = rng() < 0.3; return;
+    }
     let p;
     if (rng() < 0.7) p = w.randomFree(rng, -H * 0.85, H * 0.85, side > 0 ? H * 0.05 : -H * 0.8, side > 0 ? H * 0.8 : -H * 0.05, 0.7);
     else p = w.randomFree(rng, -H * 0.9, H * 0.9, -H * 0.85, H * 0.85, 0.7);

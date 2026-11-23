@@ -267,7 +267,7 @@
     if (MP.playing) MP.players[i].gone = true; else { MP.players.splice(i, 1); MP.players.forEach((p, k) => { p.team = k % 2; if (p.conn) { p.conn._id = k; sendTo(p.conn, { t: 'welcome', id: k }); } }); }
     lobbyChanged();
   }
-  const CFGK = ['map', 'mapSize', 'size', 'skin', 'enemy', 'farda', 'fardaE', 'diff'];
+  const CFGK = ['map', 'mapSize', 'size', 'skin', 'enemy', 'farda', 'fardaE', 'diff', 'mode'];
   MP.hostBegin = function () {
     if (MP.role !== 'host') return;
     if (MP.players.length < 2 && !confirm('Ninguém entrou na sala ainda. Iniciar mesmo assim (só com bots)?')) { el('menu').classList.remove('hidden'); return false; }
@@ -291,7 +291,7 @@
     const P = G.player, pl = [[0, r2(P.x), r2(P.y), r2(P.z), r3(P.yaw), r3(P.pitch), r2(P.stn), P.alive ? 1 : 0, Math.round(P.hp), widx(P.w[P.cur].spec.id), P.kills | 0, P.deaths | 0, P.team, 0]];
     for (const r of remotes) pl.push([r.id, r2(r.x), r2(r.y), r2(r.z), r3(r.yaw), r3(r.pitch), r2(r.stn), r.alive ? 1 : 0, Math.round(r.hp), r.wi, r.kills | 0, r.deaths | 0, r.team, r.ag]);
     const bs = []; G.bots.forEach((b, i) => { if (b.model) bs.push([i, r2(b.x), r2(b.y), r2(b.z), r3(b.yaw), r3(b.pitch), r2(b.stn), b.alive ? 1 : 0, widx(b.wid), b.agentIdx | 0, b.kills | 0, b.deaths | 0, b.team]); });
-    bcast({ t: 's', sc: G.score, p: pl, b: bs });
+    bcast({ t: 's', sc: G.score.map((v) => Math.round(v * 10) / 10), p: pl, b: bs, pt: G.points ? G.points.map((q) => [Math.round(q.c * 100) / 100, q.owner]) : 0 });
   }
 
   // ------------------------------------------------------------ convidado
@@ -357,7 +357,7 @@
   };
   function guestSnap(d) {
     if (!G.running || G.net !== 'guest') return;
-    G.score = d.sc;
+    G.score = d.sc; if (d.pt && G.points) d.pt.forEach((e, i) => { if (G.points[i]) { G.points[i].c = e[0]; G.points[i].owner = e[1]; } });
     for (const e of d.p) {
       const id = e[0]; if (id === MP.myId) { G.player.kills = e[10]; continue; }
       const key = 'p' + id; let a = nets.get(key); if (!a) { a = new NetActor(e[12], (MP.names && MP.names[id]) || 'Jogador'); a.key = key; nets.set(key, a); G.actors.push(a); }
@@ -429,7 +429,7 @@
   el('mpJoin').onclick = () => { const m = me(); MP.join(el('mpCode').value, m.name, m.loadout, m.agent).catch((e) => { el('mpInfo').textContent = e.message; MP.leave(); draw(); }); };
   el('mpLeave').onclick = () => { MP.leave(); el('mpInfo').textContent = ''; draw(); };
   el('mpStart').onclick = () => {
-    if (MP.role !== 'host' || MP.playing || el('mpStart').disabled) return; el('mpStart').disabled = true; BC.UI.collect(); const S = G.settings;
+    if (MP.role !== 'host' || MP.playing || el('mpStart').disabled) return; el('mpStart').disabled = true; BC.UI.collect(); const S = G.settings; if (S.mode === 'hunt') { S.mode = 'tdm'; alert('A Caça aos animais ainda é só para um jogador. Usando Combate por equipes.'); }
     Promise.all([BC.loadFlag(BC.TEAMS[S.skin].flag), BC.loadFlag(BC.TEAMS[S.enemy].flag)]).then(() => { el('menu').classList.add('hidden'); if (MP.hostBegin() !== false) { G.paused = false; G.lock(); } el('mpStart').disabled = false; }).catch(() => { el('mpStart').disabled = false; });
   };
   MP.on('start', (d) => {
