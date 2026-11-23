@@ -25,3 +25,7 @@ Supressores, miras red dot/holográfica e as versões de armas (supressor/luneta
 --- Sons adicionais (v9) ---
 Armas (The Free Firearm Sound Library): Ruger Mark III (.22), PPSh-41, Winchester Model 1894 (alavanca), Bersa (.380).
 Explosoes/granadas (OpenGameArt, CC0): "explosion", "Muffled Distant Explosion" (Nenad Simic), "Chunky Explosion", "Explosion Somewhere Far", "Explosions 4".
+
+--- Modelos de animais (modo Caça) ---
+Quaternius "Ultimate Animated Animal Pack" (CC0): Fox, Wolf, Deer. https://quaternius.com/packs/ultimateanimatedanimals.html
+Poly Pizza (CC BY 3.0): "Poly by Google" — Camelo, Naja, Urso, Javali, Onça, Capivara, Coelho; "Google Data Arts Team" — Jacaré; Mik Byskov — Escorpião; Syl — Ibex. https://poly.pizza (licença: https://creativecommons.org/licenses/by/3.0/)
