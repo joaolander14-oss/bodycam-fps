@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>BODYCAM — Zona de Combate</title>
+<link rel="stylesheet" href="css/style.css?v=2">
+</head>
+<body>
+<div id="game"></div>
+
+<!-- Overlay da bodycam -->
+<div id="cam" class="hidden">
+  <div id="recTL"><span class="rd"></span><b>REC</b> <span id="recT">00:00:00</span></div>
+  <div id="stampTR"><div id="clock">----</div><div id="camId">TACCAM X2 · --</div></div>
+  <div id="gps"></div>
+    <div id="compass">N 000°</div>
+    <div id="bl"><div class="lbl">INTEGRIDADE</div><div id="hpbar"><i id="hpfill"></i></div><div id="hpn">100</div></div>
+  <div id="br">
+    <div id="wname">AK-74M</div><div id="wcal">5,45×39 mm</div>
+    <div id="ammo"><b id="am">30</b><span id="ar">/ 150</span></div><div id="wmode">AUTO</div>
+  </div>
+  <div id="wlist"></div><div id="gren"></div><div id="stance"></div>
+  <div id="indic"></div>
+    <div id="lowbat">PRESSIONE TAB: PLACAR</div>
+  <div id="dead" class="hidden"><div class="big">SINAL PERDIDO</div><div class="small">Reconectando câmera…</div></div>
+</div>
+<div id="lens"></div>
+<div id="scope" class="hidden"><div class="ret"></div></div>
+<div id="rdot" style="display:none"></div>
+<div id="score" class="hidden"></div>
+<div id="pause" class="hidden"><div class="box"><h2>PAUSADO</h2><p>Clique para voltar ao combate</p><button id="resume">CONTINUAR</button> <button id="tomenu">MENU</button></div></div>
+<div id="end" class="hidden"><div class="box"><h1 id="endT">VITÓRIA</h1><p id="endS"></p><button id="again">NOVA PARTIDA</button> <button id="endmenu">MENU</button></div></div>
+
+<!-- Menu -->
+<div id="menu">
+  <div class="wrap">
+    <header><div class="logo"><span class="rd"></span>BODYCAM</div><div class="sub">ZONA DE COMBATE · FPS tático em primeira pessoa pela câmera de peito</div></header>
+    <h3>1 · MAPA</h3><div id="maps" class="cards"></div>
+    <h3>2 · SEU UNIFORME / BANDEIRA <input id="skSearch" placeholder="buscar país…" style="margin-left:14px;background:#0c150d;color:#e2f2e2;border:1px solid #3c5f3c;padding:4px 8px;font:inherit"></h3><div id="skins" class="cards small" style="max-height:340px;overflow:auto;padding-right:6px"></div>
+    <h3>4 · OPÇÕES</h3>
+    <div class="opts">
+      <label>Time inimigo <select id="oEnemy"></select></label>
+      <label>Dificuldade <select id="oDiff"></select></label>
+      <label>Soldados por time <select id="oSize"><option value="4">4 × 4</option><option value="8">8 × 8</option><option value="12">12 × 12</option><option value="16">16 × 16</option><option value="24">24 × 24</option><option value="32">32 × 32</option></select></label>
+      <label>Tamanho do mapa <select id="oMapSize"><option value="pequeno">Pequeno · 220 m</option><option value="medio">Médio · 320 m</option><option value="grande">Grande · 440 m</option><option value="enorme">Enorme · 560 m</option></select></label>
+      <label>Qualidade <select id="oQual"><option value="baixa">Baixa</option><option value="media">Média</option><option value="alta">Alta</option></select></label>
+      <label>Campo de visão <input type="range" id="oFov" min="75" max="110"><span id="vFov"></span>°</label>
+      <label>Sensibilidade <input type="range" id="oSens" min="20" max="250"><span id="vSens"></span></label>
+      <label>Volume <input type="range" id="oVol" min="0" max="100"><span id="vVol"></span></label>
+    </div>
+    <button id="play">INICIAR OPERAÇÃO</button> <span id="mstat" style="opacity:.7;margin-left:10px"></span>
+    <h3>ONLINE · SALA COM AMIGOS (humanos + bots)</h3>
+    <div class="opts"><label>Seu nome <input id="mpName" maxlength="14" value="Soldado" style="background:#0c150d;color:#e2f2e2;border:1px solid #3c5f3c;padding:5px;font:inherit;width:130px"></label>
+      <label><button id="mpHost">CRIAR SALA</button></label>
+      <label>Código <input id="mpCode" maxlength="5" placeholder="ABCDE" style="background:#0c150d;color:#e2f2e2;border:1px solid #3c5f3c;padding:5px;font:inherit;width:80px;text-transform:uppercase"> <button id="mpJoin">ENTRAR</button></label></div>
+    <div id="mpInfo" style="margin:-8px 0 8px;opacity:.85"></div><div id="mpList" style="margin-bottom:8px"></div>
+    <button id="mpStart" style="display:none">INICIAR PARTIDA ONLINE</button> <button id="mpLeave" style="display:none">SAIR DA SALA</button>
+    <h3>2b · AGENTE E FARDA</h3>
+    <div class="opts"><label>Sua farda <select id="oFarda"></select></label><label>Farda inimiga <select id="oFardaE"></select></label></div>
+    <div id="agents" class="cards small" style="max-height:260px;overflow:auto;padding-right:6px"></div>
+    <h3>3 · SUAS ARMAS — escolha até 2 <span id="wsel" style="margin-left:12px;color:#ffe9a0"></span></h3>
+    <div id="wscopes" class="opts"></div>
+    <div id="wfilters"></div>
+    <div id="arsenal"></div>
+    <div class="help">
+      <b>Controles:</b> WASD mover · Shift correr · C/Ctrl agachar · Espaço pular · Mouse mirar · Botão esquerdo atirar · <b>F</b> liga/desliga a mira (ou segure o botão direito) · R recarregar · 1-2, Q ou roda do mouse trocar de arma · B modo de tiro · Tab placar · <b>Z</b> deitar · <b>C</b> agachar · <b>G</b> lançar granada · <b>H</b> trocar granada.<br>
+      Vence quem chegar a <b>30 abates</b> primeiro. Caixas verdes de munição repõem os pentes.
+    </div>
+  </div>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="js/util.js?v=2"></script>
+<script src="js/data.js?v=1"></script>
+<script src="js/arsenal2.js?v=1"></script>
+<script src="js/arsenal.js?v=2"></script>
+<script src="js/guns.js?v=2"></script>
+<script src="js/lib/fflate.min.js"></script>
+<script src="js/lib/OBJLoader.js"></script>
+<script src="js/lib/GLTFLoader.js"></script>
+<script src="js/lib/FBXLoader.js"></script>
+<script src="js/models.js?v=3"></script>
+<script src="js/models2.js?v=3"></script>
+<script src="js/anim.js?v=1"></script>
+<script src="js/agents.js?v=1"></script>
+<script src="js/chars.js?v=5"></script>
+<script src="js/flags.js?v=3"></script>
+<script src="js/sounds.js?v=1"></script>
+<script src="js/sounds2.js?v=1"></script>
+<script src="js/sounds4.js?v=1"></script>
+<script src="js/sounds5.js?v=1"></script>
+<script src="js/audio.js?v=5"></script>
+<script src="js/audio3.js?v=1"></script>
+<script src="js/audio4.js?v=1"></script>
+<script src="js/world.js?v=1"></script>
+<script src="js/maps.js?v=4"></script>
+<script src="js/post.js?v=1"></script>
+<script src="js/fx.js?v=2"></script>
+<script src="js/fx3.js?v=1"></script>
+<script src="js/grenades.js?v=1"></script>
+<script src="js/bots.js?v=1"></script>
+<script src="js/game.js?v=8"></script>
+<script src="js/ui.js?v=7"></script>
+<script src="js/mp.js?v=1"></script>
+<script src="js/tests.js?v=1"></script>
+<script>BC.UI.boot();</script>
+</body>
+</html>

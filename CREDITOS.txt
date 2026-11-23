@@ -1,0 +1,27 @@
+SONS DE TIRO (embutidos em js/sounds.js): recortes de "The Free Firearm Sound Library" (freefirearmsfx.com), CC0.
+  https://opengameart.org/content/the-free-firearm-sound-library
+  AK-47 e SKS | AR-15 e Savage .300 BLK | Walther PPQ e Carl Gustav M45 (9 mm) | Mossberg, Nova e Model 12 (calibre 12) | Mosin Nagant (7,62x54R)
+
+MODELOS 3D DE ARMAS (pasta models/), todos CC0 do OpenGameArt:
+  AK-47 "high poly ak 47"            https://opengameart.org/content/high-poly-ak-47
+  M4A1 (PBR)                          https://opengameart.org/content/m4a1-assault-rifle
+  Glock 18 high poly (usada como Glock) https://opengameart.org/content/high-poly-glock-18-no-textures
+SVD DRAGUNOV: modelo de 'various small arms' (Tabasco, OpenGameArt, CC-BY 3.0 / CC0 — dual) convertido de .blend para .glb com Blender 4.2: https://opengameart.org/content/various-small-arms-assault-rifles-sniper-pistol
+Soldados: modelos procedurais feitos para o jogo.
+Bibliotecas: three.js r128 + OBJLoader/FBXLoader/fflate (MIT).
+
+ESPINGARDA PUMP: "Shotgun_2" do Ultimate Gun Pack (Quaternius), CC0 — https://opengameart.org/content/low-poly-guns-pack
+BANDEIRAS (pasta flags/): biblioteca flag-icons (MIT) — https://github.com/lipis/flag-icons ; bandeiras da União Soviética e da OTAN desenhadas por código.
+
+ARMAS (modelos 3D, pasta models/pool/): Ultimate Gun Pack (Quaternius, CC0) — AssaultRifle/Bullpup/SMG/Pistol/Revolver/Shotgun/Sniper; "3d weapons pack" (MP5, Uzi, Coonan, Python, shotgun, sniper — CC0, https://opengameart.org/content/3d-weapons-pack); "various small arms" (G3A3, L85, M1911, Mosin-Nagant, Dragunov — Tabasco, CC-BY 3.0/CC0). Conversão de .blend para .glb com Blender 4.2.
+SONS (js/sounds.js e js/sounds2.js): The Free Firearm Sound Library (CC0): AK-47/SKS, AR-15/.300 BLK, Walther PPQ, 1911/1917 (.45), S&W 642/Ruger Single Six (revólveres), Carl Gustav (SMG), Mossberg/Nova/Model 12, Mosin, Tikka/Arisaka/Marlin (ferrolho/alavanca).
+Agentes e fardas: modelados por código.
+
+MODELOS ADICIONAIS (models/pool2, todos CC0 do OpenGameArt, convertidos com Blender 4.2): M16A1, Vz.58, Colt Lightning, Ruger Mark III, pistolas, revólver, KRISS Vector, Sten, VSS Vintorez, L96, M60, granadas (pacote "high poly grenades: flashbang, frag, smoke") e luneta ("rifle scope").
+  https://opengameart.org/content/high-poly-grenades-flashbang-frag-grenade-smoke-grenade-no-textures
+  https://opengameart.org/content/rifle-scope
+Supressores, miras red dot/holográfica e as versões de armas (supressor/luneta/outro calibre) são montadas por código sobre os modelos acima.
+
+--- Sons adicionais (v9) ---
+Armas (The Free Firearm Sound Library): Ruger Mark III (.22), PPSh-41, Winchester Model 1894 (alavanca), Bersa (.380).
+Explosoes/granadas (OpenGameArt, CC0): "explosion", "Muffled Distant Explosion" (Nenad Simic), "Chunky Explosion", "Explosion Somewhere Far", "Explosions 4".
