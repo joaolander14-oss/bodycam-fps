@@ -171,11 +171,21 @@
       if (!this.alive) return false;
       if (dmg > 0) G.fx.wound(this, zone, dir, dmg);
       this.hp -= dmg; const dead = this.hp <= 0;
+      const RG = this._reg; this._reg = null;
+      if (RG && !dead) { this.bld = (this.bld || 0) + RG.bleed * (RG.pw || 1); this.lastFrom = from; this.lastWid = wid; if (RG.faint && !(this.faintT > 0) && Math.random() < RG.faint) { this.faintT = RG.fmin + Math.random() * (RG.fmax - RG.fmin); sendTo(this.conn, { t: 'z', s: this.faintT }); } }
       sendTo(this.conn, { t: 'h', hp: Math.max(0, Math.round(this.hp)), d: Math.round(dmg), x: r2(from ? from.x : this.x), z: r2(from ? from.z : this.z), zn: zone });
-      if (dead) { this.hp = 0; this.alive = false; this.deaths++; this.respawnT = 5; G.onKill(from, this, wid, zone === 'head'); }
+      if (dead) { this.hp = 0; this.bld = 0; this.faintT = 0; this.alive = false; this.deaths++; this.respawnT = 5; G.onKill(from, this, wid, zone === 'head'); }
       return dead;
     }
     update(dt) {
+      if (this.alive) {
+        if (this.faintT > 0) this.faintT -= dt;
+        if (this.bld > 0.01) {
+          this.bld *= Math.exp(-0.08 * dt); this.hp -= this.bld * dt; this.sync = (this.sync || 0) + dt;
+          if (this.hp <= 0) { this.hp = 0; this.alive = false; this.deaths++; this.respawnT = 5; this.bld = 0; this.faintT = 0; sendTo(this.conn, { t: 'hp', hp: 0 }); G.onKill(this.lastFrom, this, this.lastWid, false); }
+          else if (this.sync > 0.5) { this.sync = 0; sendTo(this.conn, { t: 'hp', hp: Math.round(this.hp) }); }
+        }
+      }
       if (!this.alive) {
         this.respawnT -= dt;
         if (this.respawnT <= 0 && G.running && !G.over) this.respawn();
@@ -185,7 +195,7 @@
     respawn() {
       const sp = G.world.spawns[this.team]; let best = null, bd = -1;
       for (let i = 0; i < 5; i++) { const s = sp[(G.rng() * sp.length) | 0]; let m = 1e9; for (const e of G.actors) if (e !== this && e.alive && e.team !== this.team) m = Math.min(m, Math.hypot(e.x - s.x, e.z - s.z)); if (m > bd) { bd = m; best = s; } }
-      this.hp = 100; this.alive = true; this.bleed = []; this.stains = 0; this.init = false; this.setTarget(best.x, G.world.heightAt(best.x, best.z), best.z, 0, 0, 0);
+      this.hp = 100; this.bld = 0; this.faintT = 0; this.alive = true; this.bleed = []; this.stains = 0; this.init = false; this.setTarget(best.x, G.world.heightAt(best.x, best.z), best.z, 0, 0, 0);
       this.setModel(this.wi, this.ag); sendTo(this.conn, { t: 'r', x: r2(best.x), z: r2(best.z) });
     }
     receive(m) {
@@ -258,6 +268,7 @@
     const p = MP.players.find((q) => q.conn === c), r = remotes.find((q) => q.conn === c); if (!p) return; if (c.relay) c.last = performance.now();
     if (d.t === 'in' && r) r.receive(d);
     else if (d.t === 'f' && r) hostFire(r, d, c);
+    else if (d.t === 'm' && r) { r.hp = Math.min(100, Math.min(+d.hp || 0, r.hp + 65)); r.bld = 0; }
     else if (d.t === 'g' && r) { const o = { x: d.p[0], y: d.p[1], z: d.p[2] }, v = d.v; if (!BC.GREN[d.ty] || Math.hypot(o.x - r.x, o.z - r.z) > 8) return; _throw.call(BC.Gren, r, d.ty, new T.Vector3(o.x, o.y, o.z), new T.Vector3(v[0], v[1], v[2])); bcast({ t: 'g', ty: d.ty, p: d.p, v: d.v, tm: r.team }, c); }
   }
   function hostDrop(c) {
@@ -289,7 +300,7 @@
   }
   function snapshot() {
     const P = G.player, pl = [[0, r2(P.x), r2(P.y), r2(P.z), r3(P.yaw), r3(P.pitch), r2(P.stn), P.alive ? 1 : 0, Math.round(P.hp), widx(P.w[P.cur].spec.id), P.kills | 0, P.deaths | 0, P.team, 0]];
-    for (const r of remotes) pl.push([r.id, r2(r.x), r2(r.y), r2(r.z), r3(r.yaw), r3(r.pitch), r2(r.stn), r.alive ? 1 : 0, Math.round(r.hp), r.wi, r.kills | 0, r.deaths | 0, r.team, r.ag]);
+    for (const r of remotes) pl.push([r.id, r2(r.x), r2(r.y), r2(r.z), r3(r.yaw), r3(r.pitch), r2(r.stn), (r.alive && !(r.faintT > 0)) ? 1 : 0, Math.round(r.hp), r.wi, r.kills | 0, r.deaths | 0, r.team, r.ag]);
     const bs = []; G.bots.forEach((b, i) => { if (b.model) bs.push([i, r2(b.x), r2(b.y), r2(b.z), r3(b.yaw), r3(b.pitch), r2(b.stn), (b.alive && !(b.faintT > 0)) ? 1 : 0, widx(b.wid), b.agentIdx | 0, b.kills | 0, b.deaths | 0, b.team]); });
     bcast({ t: 's', sc: G.score.map((v) => Math.round(v * 10) / 10), p: pl, b: bs, pt: G.points ? G.points.map((q) => [Math.round(q.c * 100) / 100, q.owner]) : 0 });
   }
@@ -340,6 +351,8 @@
     if (d.t === 'lobby') { MP.players = d.players; emit('lobby', MP.players); }
     else if (d.t === 'start') emit('start', d);
     else if (d.t === 's') guestSnap(d);
+    else if (d.t === 'hp') { const P = G.player; if (P.alive) { P.hp = d.hp; if (d.hp <= 0) G.netHurt(0, 0, P.x, P.z, 'body'); } }
+    else if (d.t === 'z') { G.player.faintT = d.s; G.player.fall = 0; }
     else if (d.t === 'h') G.netHurt(d.hp, d.d, d.x, d.z, d.zn);
     else if (d.t === 'r') { G.netRespawn(); const P = G.player; P.x = d.x; P.z = d.z; P.y = G.world.heightAt(d.x, d.z); }
     else if (d.t === 'f') guestFx(d);
@@ -401,6 +414,7 @@
   };
 
   setInterval(() => { if (MP.role === 'guest' && toHost && toHost.relay && !MP.playing) sendTo(toHost, { t: 'hb' }); }, 3000);
+  MP.sendHeal = function (hp) { if (toHost) sendTo(toHost, { t: 'm', hp }); };
   MP.sendEnd = function () { if (G.net === 'host' && !endSent) { endSent = true; bcast({ t: 'e', sc: G.score }); } };
   MP.tick = function (dt) {
     acc += dt;
@@ -410,7 +424,7 @@
       if (G.over && !endSent) { endSent = true; bcast({ t: 'e', sc: G.score }); }
     } else if (G.net === 'guest') {
       for (const n of nets.values()) n.update(dt);
-      if (acc >= ((toHost && toHost.relay) ? 0.1 : 0.05)) { acc = 0; const P = G.player; if (P.alive && toHost) sendTo(toHost, { t: 'in', x: r2(P.x), y: r2(P.y), z: r2(P.z), yaw: r3(P.yaw), pitch: r3(P.pitch), stn: r2(P.stn), w: widx(P.w[P.cur].spec.id) }); }
+      if (acc >= ((toHost && toHost.relay) ? 0.1 : 0.05)) { acc = 0; const P = G.player; if (P.alive && toHost) sendTo(toHost, { t: 'in', x: r2(P.x), y: r2(P.y), z: r2(P.z), yaw: r3(P.yaw), pitch: r3(P.pitch), stn: P.faintT > 0 ? 2 : r2(P.stn), w: widx(P.w[P.cur].spec.id) }); }
     }
   };
 

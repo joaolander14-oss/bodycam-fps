@@ -137,6 +137,7 @@
       let [kind, a, b] = w.model.split(':');
       if (kind === 'real') { const R = BC.REAL[a]; if (R) BC.MODELS[w.id] = R; return; }
       if (kind === 'var') return;
+      if (kind === 'proc') { BC.MODELS[w.id] = BC.procLauncher(a); return; }
       try {
         let obj; if (kind === 'idx') obj = await loaders.glb('models/pool2/' + man[+a]); else obj = await loaders[b]('models/pool/' + a + '.' + b);
         BC.MODELS[w.id] = build(w, gather(obj), FORCE[w.id]);

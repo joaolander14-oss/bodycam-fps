@@ -6,6 +6,7 @@
   const COL = [0x4a90e8, 0xe8584a, 0xdddddd];
 
   M.clear = function () {
+    if (BC.Rockets) BC.Rockets.clear(); if (BC.Vehicles) BC.Vehicles.clear();
     for (const o of objs) G.scene.remove(o.group); objs = []; for (const a of animals) a.dispose(); animals = []; G.points = null; G.hunt = null;
   };
   M.setup = function () {
@@ -32,6 +33,7 @@
       }
       G.hunt = { total: huntTotal, k: huntK }; G.score = [0, 0]; G.killLimit = 9999;
     }
+    if (BC.Vehicles) BC.Vehicles.setup();
   };
   function avg(l, k) { let s = 0; for (const e of l) s += e[k]; return l.length ? s / l.length : 0; }
 
@@ -40,12 +42,13 @@
     if (killer.isPlayer) BC.UI.msg('+' + a.sp.pts + '  ' + a.sp.n.toUpperCase(), 1.4);
   };
   M.update = function (dt) {
+    if (BC.Vehicles) BC.Vehicles.update(dt);
     if (G.points) {
       const host = G.net !== 'guest';
       for (let i = 0; i < G.points.length; i++) {
         const p = G.points[i];
         if (host) {
-          let n0 = 0, n1 = 0; for (const e of G.actors) { if (!e.alive || e.isAnimal || e.team < 0) continue; if (Math.hypot(e.x - p.x, e.z - p.z) < p.r) { if (e.team === 0) n0++; else n1++; } }
+          let n0 = 0, n1 = 0; for (const e of G.actors) { if (!e.alive || e.isAnimal || e.team < 0 || e.inVeh) continue; if (Math.hypot(e.x - p.x, e.z - p.z) < p.r) { if (e.team === 0) n0++; else n1++; } }
           if (n0 && !n1) p.c = Math.min(1, p.c + dt * 0.13 * Math.min(3, n0)); else if (n1 && !n0) p.c = Math.max(-1, p.c - dt * 0.13 * Math.min(3, n1));
           else if (!n0 && !n1 && p.owner < 0) p.c *= 1 - 0.1 * dt;
           if (p.c > 0.6) p.owner = 0; else if (p.c < -0.6) p.owner = 1; else if (Math.abs(p.c) < 0.2) p.owner = -1;

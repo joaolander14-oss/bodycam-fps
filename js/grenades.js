@@ -101,7 +101,7 @@
       gl.boomT = 0.25; gl.boomLight.position.copy(p); gl.boomLight.intensity = 14; fx.flash(p, 7);
       BC.Audio.bang && BC.Audio.bang(dP, pan);
       for (const a of G.actors) {
-        if (!a.alive) continue; const cy = a.y + 1.3, d = Math.hypot(a.x - p.x, cy - p.y, a.z - p.z); if (d > 26) continue;
+        if (!a.alive || a.inVeh) continue; const cy = a.y + 1.3, d = Math.hypot(a.x - p.x, cy - p.y, a.z - p.z); if (d > 26) continue;
         const los = w.los(p.x, p.y + 0.2, p.z, a.x, cy, a.z); if (!los && d > 4) continue;
         let face = 0.35; const fx_ = -Math.sin(a.yaw), fz_ = -Math.cos(a.yaw), dx = p.x - a.x, dz = p.z - a.z, l = Math.hypot(dx, dz) || 1; face = Math.max(0.3, (fx_ * dx + fz_ * dz) / l * 0.5 + 0.5);
         const amount = (1 - d / 26) * 6.5 * face * (los ? 1 : 0.4);
@@ -119,7 +119,7 @@
     if (dP < 10 && P.alive) BC.Audio.ring && BC.Audio.ring((1 - dP / 10) * 4);
     const R = 15;
     for (const a of G.actors) {
-      if (!a.alive) continue; const cy = a.y + (a.isPlayer ? a.eyeY * 0.8 : 1.0), d = Math.hypot(a.x - p.x, cy - p.y, a.z - p.z); if (d > R) continue;
+      if (!a.alive || (a.inVeh && !a.isVehicle)) continue; const cy = a.y + (a.isPlayer ? a.eyeY * 0.8 : 1.0), d = Math.hypot(a.x - p.x, cy - p.y, a.z - p.z); if (d > R) continue;
       let k = Math.pow(1 - d / R, 2); const los = w.los(p.x, p.y + 0.25, p.z, a.x, cy, a.z); if (!los) { if (d > 5) continue; k *= 0.3; }
       const dmg = 230 * k; if (dmg < 3) continue; const dx = a.x - p.x, dz = a.z - p.z, l = Math.hypot(dx, dz) || 1, dir = { x: dx / l, y: 0.3, z: dz / l };
       if (a.isPlayer) G.hurtPlayer(dmg, { x: p.x, z: p.z, team: g.owner ? g.owner.team : -1, alive: true, name: 'Granada', isGrenade: true }, 'body', 'frag'); else a.damage(dmg, 'body', g.owner, 'frag', dir, 'blast');

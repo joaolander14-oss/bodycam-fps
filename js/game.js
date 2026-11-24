@@ -144,7 +144,7 @@
       if (m > bd) { bd = m; best = s; }
     }
     P.x = best.x; P.z = best.z; P.y = w.heightAt(P.x, P.z); P.vx = P.vy = P.vz = 0; P.onGround = true;
-    P.hp = 100; P.alive = true; P.deadT = 0; P.yaw = 0; P.pitch = 0; P.rc.p = P.rc.y = 0; P.rl = null; P.swapT = 0; P.adsT = 0; P.crouch = 0; P.prone = 0; P.stn = 0; P.proneTog = false; P.eyeY = 1.4; P.fall = 0; P.thr = null; P.bld = 0; P.faintT = 0; P.gren = { frag: 2, flash: 1, smoke: 1 }; P.grSel = 'frag'; G.blind = 0;
+    P.hp = 100; P.alive = true; P.deadT = 0; P.yaw = 0; P.pitch = 0; P.rc.p = P.rc.y = 0; P.rl = null; P.swapT = 0; P.adsT = 0; P.crouch = 0; P.prone = 0; P.stn = 0; P.proneTog = false; P.eyeY = 1.4; P.fall = 0; P.thr = null; P.bld = 0; P.faintT = 0; P.kit = { band: 1, med: 1 }; P.heal = null; P.inVeh = null; P.gren = { frag: 2, flash: 1, smoke: 1 }; P.grSel = 'frag'; G.blind = 0;
     for (const wp of P.w) { wp.mag = wp.spec.mag; wp.reserve = wp.spec.reserve; }
     selectWeapon(0, false); P.tension = 15; P.morale = 60; if (!first) { G.glitch = 1.6; G.flashScreen = 0.1; }
     for (const t of w.crates) t.t = 0;
@@ -167,20 +167,20 @@
     if (h) { tW = h.t; hp = { nx: h.nx, ny: h.ny, nz: h.nz, tag: h.tag }; }
     let best = null, bz = null, bt = tW;
     for (const e of G.actors) {
-      if (e === shooter || !e.alive || e.team === shooter.team || (G.hunt && !e.isAnimal)) continue;
+      if (e === shooter || !e.alive || e.inVeh || e === shooter.inVeh || (G.hunt && !e.isAnimal)) continue; // fogo amigo ligado
       const r = BC.hitActor(e, o.x, o.y, o.z, d.x, d.y, d.z, bt); if (r && r.t < bt) { bt = r.t; best = e; bz = r.zone; }
     }
     const px = o.x + d.x * bt, py = o.y + d.y * bt, pz = o.z + d.z * bt;
     if (best) {
       const mul = bz === 'head' ? spec.headMul : bz === 'legs' ? spec.legMul : 1;
       let dmg = spec.dmg * mul * BC.falloff(spec, bt) * scale;
-      const reg = best.isAnimal ? null : BC.Anatomy.hit(best, px, py, pz, bz, spec);
+      const reg = (best.isAnimal || best.isVehicle) ? null : BC.Anatomy.hit(best, px, py, pz, bz, spec);
       if (reg) { dmg = spec.dmg * reg.mul * BC.falloff(spec, bt) * scale; if (reg.kill) dmg = Math.max(dmg, 999); reg.pw = BC.clamp(spec.dmg * scale / 55, 0.5, 2.4); if (shooter.isPlayer) G.lastRegion = reg.n; }
-      fx.blood({ x: px, y: py, z: pz }, d, bz, w, Math.min(dmg, 160));
+      if (best.isVehicle) fx.impact({ x: px, y: py, z: pz }, { nx: -d.x, ny: -d.y, nz: -d.z, tag: 'metal' }, 'metal', false); else fx.blood({ x: px, y: py, z: pz }, d, bz, w, Math.min(dmg, 160));
       let killed = false;
-      if (!best.isPlayer && shooter.isPlayer && bt < 3.2) BC.UI.lensBlood(1 + Math.round(dmg / 45));
+      if (!best.isPlayer && !best.isVehicle && shooter.isPlayer && bt < 3.2) BC.UI.lensBlood(1 + Math.round(dmg / 45));
       if (best.isPlayer) { G._reg = reg; killed = G.hurtPlayer(dmg, shooter, bz, spec.id); }
-      else { best._reg = reg; killed = best.damage(dmg, bz, shooter, spec.id, d, null); }
+      else { best._reg = reg; best._hit = { x: px, y: py, z: pz }; killed = best.damage(dmg, bz, shooter, spec.id, d, null); }
       
     } else if (hp) {
       fx.impact({ x: px, y: py, z: pz }, hp, hp.tag, spec.pellets > 1 ? false : spec.dmg > 60);
@@ -253,6 +253,10 @@
   }
   function shoot(w) {
     const P = G.player, s = w.spec, b = camBasis(), o = eyePos();
+    if (s.rocket) { // lançador antitanque: dispara um foguete
+      BC.Rockets.launch(P, { x: o.x + b.f.x * 0.9 + b.r.x * 0.12, y: o.y + b.f.y * 0.9 - 0.12, z: o.z + b.f.z * 0.9 + b.r.z * 0.12 }, b.f, s);
+      P.kick = Math.min(1.6, P.kick + 1.6); P.kickR += 0.12; P.rc.p += BC.rad(2.2); P.lastShot = G.time; P.shotIdx = 0; G.addLocalGlitch(0.5, 0.46, 0.25); G.shake = Math.max(G.shake || 0, 0.5); P.tension = Math.min(100, P.tension + 3); return;
+    }
     const sp = BC.rad(spreadDeg(w));
     for (let p = 0; p < s.pellets; p++) {
       const a = G.rng() * 6.283283, r = Math.sqrt(G.rng()) * (s.pellets > 1 ? BC.rad(s.pelletCone) : 0) + (s.pellets > 1 ? 0 : 0);
@@ -317,6 +321,7 @@
     if (P.fall > 0 && !(P.faintT > 0)) P.fall = Math.max(0, P.fall - dt * 1.4);
     if (P.bld > 0.01) { P.bld *= Math.exp(-0.08 * dt); P.hp -= P.bld * dt; if (P.hp <= 0.5) { P.hp = 1; G.hurtPlayer(5, P.lastFrom || { x: P.x, z: P.z, team: -1, alive: true, name: 'Hemorragia' }, 'body', 'bleed'); return; } }
     if (P.faintT > 0) { P.faintT -= dt; P.fall = Math.min(1, P.fall + dt * 2.2); P.vx *= 0.9; P.vz *= 0.9; P.adsT *= 0.8; if (P.faintT <= 0) P.hp = Math.max(P.hp, 12); return; }
+    if (P.heal) { P.heal.t += dt; if (P.heal.t >= P.heal.dur) { if (P.heal.type === 'band') { P.bld = 0; P.hp = Math.min(100, P.hp + 8); } else { P.bld = 0; P.hp = Math.min(100, P.hp + 65); P.tension = Math.max(0, P.tension - 30); } if (G.net === 'guest' && BC.MP) BC.MP.sendHeal(P.hp); P.heal = null; } }
     const wp = P.w[P.cur], spec = wp.spec;
     // entrada de movimento
     let fx_ = 0, fz_ = 0;
@@ -334,12 +339,12 @@
     P.sprintT += ((wantSprint ? 1 : 0) - P.sprintT) * Math.min(1, 8 * dt);
     const sprinting = P.sprintT > 0.5;
     let speed = sprinting ? SPRINT : BC.lerp(WALK, CROUCH, P.crouch) * (1 - 0.5 * P.prone);
-    speed *= 1 - 0.4 * P.adsT;
+    speed *= 1 - 0.4 * P.adsT; if (P.heal) speed *= 0.5;
     if (P.inWater) speed *= 0.6;
     const wxw = fx_ * Math.cos(P.yaw) + fz_ * Math.sin(P.yaw), wzw = -fx_ * Math.sin(P.yaw) + fz_ * Math.cos(P.yaw);
     if (keys.Space && P.stn > 0.3) { P.proneTog = false; keys.Space = false; }
     const jump = keys.Space && P.onGround && P.stn < 0.3;
-    BC.moveActor(P, wxw, wzw, moving ? speed : 0, dt, w, jump);
+    if (P.inVeh) { P.vx = P.vz = 0; P.onGround = true; } else BC.moveActor(P, wxw, wzw, moving ? speed : 0, dt, w, jump);
     if (jump) keys.Space = false;
     if (P.landed > 4) { P.kick += 0.5; BC.Audio.step(w.surf, 1.2, 0, 0); }
     P.h = 1.78 - 0.53 * P.crouch - 0.75 * P.prone; P.sneak = P.stn > 0.6 && Math.hypot(P.vx, P.vz) < 2;
@@ -382,7 +387,7 @@
     // disparo
     edgeBuf = Math.max(0, edgeBuf - dt);
     if (edgeClick) { edgeBuf = 0.15; edgeClick = false; if (wp.mag <= 0 && !P.rl && P.swapT <= 0) { BC.Audio.click(0.5); startReload(); } }
-    const auto = spec.auto && wp.mode === 'auto', blocked = sprinting || P.thr || P.swapT > 0 || (P.rl && !(spec.shellReload && wp.mag > 0)) || !P.alive;
+    const auto = spec.auto && wp.mode === 'auto', blocked = sprinting || P.heal || P.thr || P.swapT > 0 || (P.rl && !(spec.shellReload && wp.mag > 0)) || !P.alive;
     if (P.rl && spec.shellReload && wp.mag > 0 && (auto ? mouseL : edgeBuf > 0)) P.rl = null; // interrompe recarga da espingarda
     const held = auto ? mouseL : edgeBuf > 0;
     wp.clock.step(G.time, held && !blocked, () => wp.mag > 0 && (auto || edgeBuf > 0) && !(P.rl) && P.swapT <= 0, () => { wp.mag--; if (!auto) edgeBuf = 0; shoot(wp); });
@@ -503,6 +508,9 @@
       if (e.code === 'KeyQ' && P.alive) G.selectWeapon((P.cur + 1) % P.w.length);
       if (e.code === 'KeyF' && P.alive) aimTog = !aimTog;
       if (e.code === 'KeyZ' && P.alive) P.proneTog = !P.proneTog;
+      if (e.code === 'KeyE' && P.alive && BC.Vehicles) BC.Vehicles.useKey();
+      if (e.code === 'KeyV' && P.alive && !(P.faintT > 0) && !P.heal && P.kit && P.kit.band > 0 && (P.bld > 0.01 || P.hp < 100)) { P.kit.band--; P.heal = { type: 'band', t: 0, dur: 2.4 }; BC.Audio.cloth && BC.Audio.cloth(0.8); }
+      if (e.code === 'KeyX' && P.alive && !(P.faintT > 0) && !P.heal && P.kit && P.kit.med > 0 && (P.bld > 0.01 || P.hp < 100)) { P.kit.med--; P.heal = { type: 'med', t: 0, dur: 5 }; BC.Audio.cloth && BC.Audio.cloth(0.8); }
       if (e.code === 'KeyG' && P.alive && !P.thr && P.swapT <= 0 && P.gren[P.grSel] > 0) { P.thr = { t: 0, type: P.grSel }; P.rl = null; aimTog = false; BC.Audio.click(0.3); }
       if (e.code === 'KeyH' && P.alive) { const ks = Object.keys(P.gren).filter((k) => P.gren[k] > 0); if (ks.length) { P.grSel = ks[(ks.indexOf(P.grSel) + 1) % ks.length]; BC.Audio.click(0.2); } }
       if (e.code === 'Space') e.preventDefault();
@@ -542,7 +550,7 @@
     if (G.running) {
       updatePlayer(dt); if (G.player.alive) updateTension(dt); for (let i = G.lg.length - 1; i >= 0; i--) { G.lg[i].a -= dt * 3.2; if (G.lg[i].a <= 0) G.lg.splice(i, 1); } if (G.net && BC.MP) BC.MP.tick(dt);
       for (const b of G.bots) b.update(dt);
-      BC.Modes.update(dt);
+      BC.Rockets.update(dt); BC.Modes.update(dt);
       BC.Gren.update(dt); G.shake = Math.max(0, (G.shake || 0) * Math.exp(-4.5 * dt)); G.blind = Math.max(0, (G.blind || 0) - dt);
       fx.update(dt, G.world);
       BC.Audio.ambientTick(dt);

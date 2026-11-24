@@ -74,10 +74,12 @@
     this.hp = 100; this.alive = true; this.deadT = 0; this.mag = this.spec.mag; this.reloadT = 0; this.fireT = 0.5; this.burst = 0;
     this.yaw = this.team === 0 ? 0 : Math.PI; this.pitch = 0; this.target = null; this.engT = 0; this.reactT = 0; this.lostT = 99; this.lastSeen = null;
     this.wp = null; this.wpT = 0; this.stuckT = 0; this.sx = this.x; this.sz = this.z; this.strafe = 1; this.strafeT = 1; this.percT = rng() * 0.3; this.pause = 0; this.alertT = 0;
-    this.avoidDir = 0; this.avoidT = 0; this.sprint = false; this.crouch = 0; this.prone = 0; this.stn = 0; this.wantStn = 0; this.gren = (rng() < 0.7) ? (rng() < 0.6 ? 'frag' : rng() < 0.6 ? 'flash' : 'smoke') : null; this.grenT = 6 + rng() * 22; this.blindT = 0; this.flee = null; this.bleed = []; this.stains = 0; this.death = null; this.bld = 0; this.faintT = 0; this.lastFrom = null; this.cover = null; this.coverT = 0; this.phT = 0; this.phase = 'patrol';
+    this.avoidDir = 0; this.avoidT = 0; this.sprint = false; this.crouch = 0; this.prone = 0; this.stn = 0; this.wantStn = 0; this.gren = (rng() < 0.7) ? (rng() < 0.6 ? 'frag' : rng() < 0.6 ? 'flash' : 'smoke') : null; this.grenT = 6 + rng() * 22; this.blindT = 0; this.flee = null; this.bleed = []; this.stains = 0; this.death = null; this.bld = 0; this.faintT = 0; this.lastFrom = null; this.inVeh = null; this.atSpec = null; this.atAmmo = 0; this.cover = null; this.coverT = 0; this.phT = 0; this.phase = 'patrol';
     if (this.model) { G.scene.remove(this.model.root); }
     this.agentIdx = (rng() * BC.AGENTS.length) | 0; this.model = BC.makeChar(G.teamDefs[this.team], this.wid, this.agentIdx);
     G.scene.add(this.model.root); this.model.root.rotation.set(0, this.yaw, 0);
+    if (rng() < 0.12) { const L = BC.WEAPONS.filter((x) => x.cls === 'launcher'); if (L.length) { this.atSpec = L[(rng() * L.length) | 0]; this.atAmmo = 2; } }
+    if (BC.Vehicles) BC.Vehicles.tryBoard(this);
   };
 
   B.throwGren = function (tx, tz, ty) {
@@ -141,7 +143,7 @@
   };
 
   B.visible = function (e) {
-    const w = this.G.world, ex = e.x, ez = e.z, ey = e.y + (e.isPlayer ? 1.0 * (e.h / 1.78) : e.isAnimal ? e.h * 0.5 : 1.1);
+    const w = this.G.world, ex = e.x, ez = e.z, ey = e.y + (e.isPlayer ? 1.0 * (e.h / 1.78) : e.isAnimal ? e.h * 0.5 : e.isVehicle ? 1.4 : 1.1);
     return w.los(this.x, this.y + this.eyeH(), this.z, ex, ey, ez);
   };
 
@@ -149,7 +151,7 @@
     const G = this.G; let best = null, bd = 1e9;
     const fx = -Math.sin(this.yaw), fz = -Math.cos(this.yaw);
     for (const e of G.actors) {
-      if (!e.alive || e.team === this.team || (G.hunt && !e.isAnimal)) continue;
+      if (!e.alive || e.team === this.team || e.inVeh || (e.isVehicle && !this.atSpec) || (G.hunt && !e.isAnimal)) continue;
       const dx = e.x - this.x, dz = e.z - this.z, d = Math.hypot(dx, dz);
       const maxD = this.spec.cls === 'sniper' ? 110 : 85; if (d > maxD || d > bd) continue;
       const cosA = (dx * fx + dz * fz) / (d || 1);
@@ -195,6 +197,7 @@
   };
 
   B.update = function (dt) {
+    if (this.inVeh) return;
     const G = this.G, w = G.world;
     if (!this.alive || this.faintT > 0) {
       if (this.alive) { // desmaiado: continua sangrando, leva dano e pode acordar
@@ -252,7 +255,7 @@
       wantYaw = Math.atan2(-dx, -dz); this.engT += dt;
       this.grenT -= dt;
       if (this.gren && this.grenT <= 0 && ((!this.seen && this.lostT > 0.4 && d > 10 && d < 38) || (this.seen && d > 14 && d < 32 && this.phase === 'hide' && G.rng() < 0.02))) this.throwGren(tx, tz, e.y);
-      const eyeY = this.y + this.eyeH(), ty = e.y + (e.isPlayer ? 1.0 * (e.h / 1.78) : e.isAnimal ? e.h * 0.5 : 1.15);
+      const eyeY = this.y + this.eyeH(), ty = e.y + (e.isPlayer ? 1.0 * (e.h / 1.78) : e.isAnimal ? e.h * 0.5 : e.isVehicle ? 1.4 : 1.15);
       wantPitch = BC.clamp(Math.atan2(ty - eyeY, d), -0.6, 0.6);
       const pref = PREF[spec.cls], fx = -Math.sin(this.yaw), fz = -Math.cos(this.yaw);
       this.coverT -= dt; this.phT -= dt;
@@ -285,7 +288,7 @@
       this.fireT -= dt;
       const dyaw = Math.abs(((wantYaw - this.yaw + Math.PI * 3) % (Math.PI * 2)) - Math.PI);
       if (this.seen && !this.flee && this.engT >= this.reactT && dyaw < 0.12 && this.reloadT <= 0 && this.fireT <= 0 && this.phase !== 'go') {
-        const maxR = spec.cls === 'shotgun' ? 28 : (spec.cls === 'pistol' || spec.cls === 'revolver') ? 40 : spec.cls === 'smg' ? 65 : 100;
+        const maxR = e.isVehicle ? 140 : spec.cls === 'shotgun' ? 28 : (spec.cls === 'pistol' || spec.cls === 'revolver') ? 40 : spec.cls === 'smg' ? 65 : 100;
         if (d < maxR) this.shoot(e, d);
       }
     } else {
@@ -336,10 +339,17 @@
 
   B.shoot = function (e, d) {
     const G = this.G, spec = this.spec, diff = G.diff, rng = G.rng;
+    if (e.isVehicle) { // soldado antitanque: dispara foguete no blindado
+      if (!this.atSpec || this.atAmmo <= 0) { this.fireT = 3; return; }
+      const eye = { x: this.x, y: this.y + this.eyeH(), z: this.z }, tx = e.x, ty = e.y + 1.4, tz = e.z; let dx = tx - eye.x, dy = ty - eye.y, dz = tz - eye.z; const l = Math.hypot(dx, dy, dz); dx /= l; dy /= l; dz /= l;
+      const er = BC.rad(2 + l / 70), a = rng() * 6.283, r = Math.sqrt(rng()) * er; dy += Math.sin(a) * r + 0.012 * l / 20; dx += Math.cos(a) * r * (-dz); dz += Math.cos(a) * r * dx * 0.2;
+      const il = Math.hypot(dx, dy, dz); BC.Rockets.launch(this, { x: eye.x + dx * 1.2, y: eye.y + dy * 1.2 - 0.1, z: eye.z + dz * 1.2 }, { x: dx / il, y: dy / il, z: dz / il }, this.atSpec);
+      this.atAmmo--; this.fireT = 5 + rng() * 3; if (this.atAmmo <= 0) { this.reloadT = 0; } return;
+    }
     const interval = 60 / spec.rpm;
     const sem = !spec.auto;
     const eye = { x: this.x, y: this.y + this.eyeH(), z: this.z };
-    const ty = e.y + (e.isPlayer ? 1.0 * (e.h / 1.78) : e.isAnimal ? e.h * 0.5 : 1.12) + (!e.isAnimal && rng() < 0.08 ? 0.45 : 0);
+    const ty = e.y + (e.isPlayer ? 1.0 * (e.h / 1.78) : e.isAnimal ? e.h * 0.5 : e.isVehicle ? 1.4 : 1.12) + (!e.isAnimal && rng() < 0.08 ? 0.45 : 0);
     let dx = e.x - eye.x, dy = ty - eye.y, dz = e.z - eye.z; const l = Math.hypot(dx, dy, dz); dx /= l; dy /= l; dz /= l;
     // erro de pontaria: maior no início do engajamento, com distância e em movimento
     const moving = Math.hypot(this.vx, this.vz) > 1;
