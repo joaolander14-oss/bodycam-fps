@@ -321,7 +321,9 @@
           }
           break;
         }
-        prevT = t; t += Math.max(0.35, Math.min(2.0, (py - h) * 0.7));
+        prevT = t; let nt = t + Math.max(0.35, Math.min(2.0, (py - h) * 0.7));
+        if (nt >= best) { if (t >= best - 1e-3) break; nt = best - 1e-3; } // raios curtos também testam o fim
+        t = nt;
       }
     }
     if (!found) return null;

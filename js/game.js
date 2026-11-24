@@ -184,11 +184,17 @@
       else { best._reg = reg; best._hit = { x: px, y: py, z: pz }; killed = best.damage(dmg, bz, shooter, spec.id, d, null); }
       
     } else if (hp) {
-      fx.impact({ x: px, y: py, z: pz }, hp, hp.tag, spec.pellets > 1 ? false : spec.dmg > 60);
+      fx.impact({ x: px, y: py, z: pz }, hp, hp.tag, spec.pellets > 1 ? false : spec.dmg > 60, spec, d);
       const P = G.player;
       if (!shooter.isPlayer) { const dd = Math.hypot(px - P.x, pz - P.z); if (dd < 25) BC.Audio.impact(dd, G.panTo(px, pz), hp.tag === 'metal' ? 'metal' : 'x'); }
-      // penetração: o calibre decide se atravessa o material (e perde dano ao atravessar)
-      if (depth < 2 && Math.abs(hp.ny) < 0.75) { const k = BC.penetrate(spec, hp.tag); if (k > 0) fireCore(shooter, { x: px + d.x * 0.45, y: py + d.y * 0.45, z: pz + d.z * 0.45 }, d, spec, scale * Math.max(0.25, 0.8 - k * 0.45), null, false, depth + 1); }
+      // penetração: o calibre e a espessura do material decidem se atravessa; quem sai deixa um furo maior do outro lado
+      if (depth < 3 && Math.abs(hp.ny) < 0.75) {
+        const pr = { x: px + d.x * 0.6, y: py + d.y * 0.6, z: pz + d.z * 0.6 }, bh = w.raycast(pr.x, pr.y, pr.z, -d.x, -d.y, -d.z, 0.6), thick = bh ? Math.max(0.05, 0.6 - bh.t) : 0.6, k = BC.penetrate(spec, hp.tag, thick);
+        if (k > 0) {
+          if (bh && fx.hole) { const ex = { x: pr.x - d.x * bh.t, y: pr.y - d.y * bh.t, z: pr.z - d.z * bh.t }; fx.hole(ex, { x: bh.nx, y: bh.ny, z: bh.nz }, hp.tag, (spec.pellets > 1 ? 0.045 : 0.06 + 0.14 * BC.clamp(spec.dmg / 130, 0.1, 1)) * 1.5, d, { big: true }); fx.debris(ex.x, ex.y, ex.z, (BC.SURF && BC.SURF[hp.tag]) || 0x888888, 3, 2.6, bh.nx, bh.ny, bh.nz); }
+          fireCore(shooter, { x: px + d.x * (thick + 0.05), y: py + d.y * (thick + 0.05), z: pz + d.z * (thick + 0.05) }, d, spec, scale * Math.max(0.25, 0.85 - k * 0.5), null, false, depth + 1);
+        }
+      }
     }
     if (tracerOk && !shooter.isPlayer && muzzle && G.rng() < 0.4) fx.tracer(muzzle, { x: px, y: py, z: pz });
     if (muzzle && !shooter.isPlayer && !spec.sup) { fx.flash(muzzle, 0.5); }

@@ -67,10 +67,14 @@
           const dx = g.v.x / sp, dy = g.v.y / sp, dz = g.v.z / sp, h = w.raycast(g.p.x, g.p.y, g.p.z, dx, dy, dz, dist + 0.04);
           if (h && h.t <= dist + 0.04) {
             g.p.x += dx * Math.max(0, h.t - 0.035); g.p.y += dy * Math.max(0, h.t - 0.035); g.p.z += dz * Math.max(0, h.t - 0.035);
-            const nx = h.nx, ny = h.ny, nz = h.nz, vn = g.v.x * nx + g.v.y * ny + g.v.z * nz; const e = 0.4;
-            g.v.x -= (1 + e) * vn * nx; g.v.y -= (1 + e) * vn * ny; g.v.z -= (1 + e) * vn * nz; const f = ny > 0.5 ? 0.72 : 0.9; g.v.x *= f; g.v.z *= f;
-            if (Math.abs(vn) > 2.5) BC.Audio.gren('bounce', Math.hypot(G.player.x - g.p.x, G.player.z - g.p.z), G.panTo(g.p.x, g.p.z), 0.7);
-            if (ny > 0.6 && g.v.length() < 1.6) { g.rest = true; g.v.set(0, 0, 0); }
+            const nx = h.nx, ny = h.ny, nz = h.nz, vn = g.v.x * nx + g.v.y * ny + g.v.z * nz, tag = h.tag, avn = Math.abs(vn);
+            const E = { concrete: 0.5, metal: 0.58, wood: 0.36, rock: 0.46, sand: 0.1, snow: 0.08, mud: 0.05, dirt: 0.2, grass: 0.18, water: 0 }, soft = tag === 'sand' || tag === 'snow' || tag === 'mud' || tag === 'dirt' || tag === 'grass';
+            const e = avn < 1.3 ? 0 : (E[tag] === undefined ? 0.3 : E[tag]) * (0.85 + Math.random() * 0.3);
+            g.v.x -= (1 + e) * vn * nx; g.v.y -= (1 + e) * vn * ny; g.v.z -= (1 + e) * vn * nz;
+            if (avn >= 1.3) { const f = ny > 0.5 ? (soft ? 0.55 : 0.78) : 0.88; g.v.x *= f; g.v.z *= f; const sp = Math.min(6, avn); g.v.x += (Math.random() - 0.5) * 0.14 * sp; g.v.z += (Math.random() - 0.5) * 0.14 * sp; g.spin.set((Math.random() - 0.5) * 3 * (3 + sp), (Math.random() - 0.5) * 3 * (3 + sp), (Math.random() - 0.5) * 3 * (3 + sp)); }
+            else if (ny > 0.6) { const hsp = Math.hypot(g.v.x, g.v.z); if (hsp > 0.01) { const nsp = Math.max(0, hsp - (soft ? 5 : 2.4) * dt); g.v.x *= nsp / hsp; g.v.z *= nsp / hsp; } g.spin.set(g.v.z * 3, 0, -g.v.x * 3); }
+            if (avn > 1.4) { const idx = tag === 'metal' ? 3 + ((Math.random() * 2) | 0) : (tag === 'concrete' || tag === 'rock' || tag === 'wood') ? 2 : (Math.random() * 2) | 0; BC.Audio.gren('bounce', Math.hypot(G.player.x - g.p.x, G.player.z - g.p.z), G.panTo(g.p.x, g.p.z), BC.clamp(avn / 9, 0.18, 1) * 0.9, 1, idx); }
+            if (ny > 0.6 && g.v.length() < 0.5) { g.rest = true; g.v.set(0, 0, 0); }
             if (h.tag === 'water') { g.rest = true; g.v.set(0, 0, 0); }
           } else { g.p.x += g.v.x * dt; g.p.y += g.v.y * dt; g.p.z += g.v.z * dt; }
         }

@@ -15,7 +15,7 @@
     if (C.createStereoPanner) { const sp = C.createStereoPanner(); sp.pan.value = BC.clamp(pan || 0, -1, 1); last.connect(sp); last = sp; } last.connect(A.master);
     src.start(C.currentTime + Math.min(1.4, d / 343)); return true;
   }
-  A.gren = function (kind, dist, pan, gain, rate) { if (!play(kind, dist, pan, gain, rate) && A.metal) A.metal(0.4, kind === 'throw' ? 900 : 2200); };
+  A.gren = function (kind, dist, pan, gain, rate, idx) { if (!play(kind, dist, pan, gain, rate, idx) && A.metal) A.metal(0.4, kind === 'throw' ? 900 : 2200); };
   A.boom = function (dist, pan) { _boom(dist, pan); if (dist < 70) play('frag', dist, pan, 1.5, 1, dist > 25 ? 1 : 0); if (dist > 30) play('frag', dist, pan, 1.0, 0.8, 3); };
   A.bang = function (dist, pan) { _bang(dist, pan); play('flash', dist, pan, 1.5, 1, 0); if (dist < 12) play('flash', dist, pan, 0.6, 1, 1); };
   A.pop = function (dist, pan) { _pop(dist, pan); play('smoke', dist, pan, 0.9, 1); };

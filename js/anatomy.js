@@ -3,10 +3,10 @@
   const BC = window.BC;
   // resistência dos materiais (0..~1.2). Um tiro atravessa se a "potência" do calibre for maior.
   const RES = { wood: 0.25, glass: 0.12, snow: 0.1, sand: 0.6, dirt: 0.5, concrete: 0.9, metal: 0.85, rock: 1.1, brick: 0.8 };
-  BC.penetrate = function (spec, tag) {
-    if (tag === 'water') return -1; const r = RES[tag] === undefined ? 0.8 : RES[tag];
-    const power = BC.clamp((spec.dmg - 28) / 80, 0, 1.25) * (spec.pellets > 1 ? 0.25 : 1);
-    return power >= r ? Math.max(0.05, r) : -1;
+  BC.penetrate = function (spec, tag, thick) {
+    if (tag === 'water') return -1; const r = RES[tag] === undefined ? 0.8 : RES[tag], th = Math.max(0.05, thick === undefined ? 0.3 : thick);
+    const power = BC.clamp((spec.dmg - 28) / 80, 0, 1.25) * (spec.pellets > 1 ? 0.25 : 1), need = r * Math.pow(th / 0.3, 0.8);
+    return power >= need ? Math.max(0.05, r * th / 0.3) : -1;
   };
   // R: {n, mul, kill, bleed (hp/s), faint (prob.), fmin, fmax}
   const R = (n, mul, bleed, faint, kill, fmin, fmax) => ({ n, mul, bleed: (bleed || 0) * 0.6, faint: faint || 0, kill: !!kill, fmin: fmin || 12, fmax: fmax || 35 });
