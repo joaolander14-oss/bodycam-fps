@@ -11,7 +11,6 @@
   const WALK = 3.5, SPRINT = 5.8, CROUCH = 1.8;
   const keys = {}; let mouseL = false, mouseR = false, edgeBuf = 0, edgeClick = false, locked = false;
   const _e = new T.Euler(0, 0, 0, 'YXZ'), _q = new T.Quaternion(), _v = new T.Vector3();
-  const _wv = new T.Vector3(), _we = new T.Euler();
   let aimTog = false;
   let renderer, scene, camera, vmScene, vmCam, vmGroup, sun, hemi, sky, post, fx, muzzleLight, vm = [], clockT = 0;
   let sunDir = new T.Vector3(-0.4, 0.8, 0.3).normalize();
@@ -486,10 +485,7 @@
     {
       const aw = ads * ads * ads, tw = (1 + 0.6 * mv) * aw, t = G.time;
       rx += Math.sin(t * 1.1) * 0.012 * tw + Math.sin(t * 2.3 + 2) * 0.004 * tw; ry += Math.sin(t * 0.8 + 1) * 0.016 * tw + Math.sin(t * 1.9) * 0.004 * tw;
-      const D = 40, wn = wst.dot && m.scopeMesh && m.scopeMesh.userData.win;
-      if (wn) { // mira de ponto: o tiro sai exatamente por onde o ponto aparece (centro da janela da mira), mesmo com o balanço da arma
-        const vv = _wv.set(wn.x, wn.y, wn.z).applyEuler(_we.set(rx, ry, rz)); P.aimY = aw * Math.atan2(-(vv.x + px), -(vv.z + pz)); P.aimP = aw * Math.atan2(vv.y + py, -(vv.z + pz));
-      } else { P.aimY = aw * (ry - (px - adp[0]) / D); P.aimP = aw * (rx + (py - adp[1]) / D); }
+      const D = 40; P.aimY = aw * (ry - (px - adp[0]) / D); P.aimP = aw * (rx + (py - adp[1]) / D);
       const pxs = (window.innerHeight / 2) / Math.tan(BC.rad(fov) / 2), ox = -Math.tan(P.aimY) * pxs, oy = -Math.tan(P.aimP) * pxs;
       BC.UI.setAim(P.alive ? ox : 0, P.alive ? oy : 0);
     }
