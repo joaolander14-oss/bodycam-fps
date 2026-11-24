@@ -53,7 +53,7 @@
     $('endmenu').onclick = () => { $('end').classList.add('hidden'); $('tomenu').onclick(); };
     $('again').onclick = () => { if (G.net) { $('tomenu').onclick(); $('end').classList.add('hidden'); return; } $('end').classList.add('hidden'); G.start({}); G.paused = false; G.lock(); };
     // fardas e agentes
-    const FARDAS = [['pais', 'Padrão do país'], ['woodland', 'Floresta (Woodland)'], ['desert', 'Deserto'], ['snow', 'Inverno (neve)'], ['urban', 'Urbano (cinza)'], ['black', 'Operações Especiais (preto)']];
+    const FARDAS = [['pais', 'Padrão do país'], ['woodland', 'Floresta (Woodland)'], ['desert', 'Deserto'], ['snow', 'Inverno (neve)'], ['urban', 'Urbano (cinza)'], ['black', 'Operações Especiais (preto)'], ['flecktarn', 'Flecktarn (alemã)'], ['tiger', 'Tigerstripe (selva)'], ['dpm', 'DPM (britânica)'], ['marpat', 'Digital floresta (MARPAT)'], ['aridpix', 'Digital deserto'], ['splinter', 'Splinter (angular)'], ['navy', 'Digital naval (azul)'], ['tropic', 'Tropical'], ['ghillie', 'Ghillie (atirador)']];
     for (const id of ['oFarda', 'oFardaE']) { for (const [k, n] of FARDAS) { const o = document.createElement('option'); o.value = k; o.textContent = n; $(id).appendChild(o); } }
     $('oFarda').value = S.farda || 'pais'; $('oFardaE').value = S.fardaE || 'pais';
     const agEl = $('agents'), agCards = [];

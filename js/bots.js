@@ -88,7 +88,7 @@
     this.wp = null; this.wpT = 0; this.stuckT = 0; this.sx = this.x; this.sz = this.z; this.strafe = 1; this.strafeT = 1; this.percT = rng() * 0.3; this.pause = 0; this.alertT = 0;
     this.avoidDir = 0; this.avoidT = 0; this.sprint = false; this.crouch = 0; this.prone = 0; this.stn = 0; this.wantStn = 0; this.gren = (rng() < 0.7) ? (rng() < 0.6 ? 'frag' : rng() < 0.6 ? 'flash' : 'smoke') : null; this.grenT = 6 + rng() * 22; this.blindT = 0; this.flee = null; this.bleed = []; this.stains = 0; this.death = null; this.bld = 0; this.faintT = 0; this.lastFrom = null; this.inVeh = null; this.atSpec = null; this.atAmmo = 0; this.cover = null; this.coverT = 0; this.phT = 0; this.phase = 'patrol';
     if (this.model) { G.scene.remove(this.model.root); }
-    this.agentIdx = (rng() * BC.AGENTS.length) | 0; this.model = BC.makeChar(G.teamDefs[this.team], this.wid, this.agentIdx);
+    this.agentIdx = (rng() * BC.AGENTS.length) | 0; this.model = BC.makeChar(G.teamDefs[this.team], this.wid, this.agentIdx, this.name);
     G.scene.add(this.model.root); this.model.root.rotation.set(0, this.yaw, 0);
     if (rng() < 0.12) { const L = BC.WEAPONS.filter((x) => x.cls === 'launcher'); if (L.length) { this.atSpec = L[(rng() * L.length) | 0]; this.atAmmo = 2; } }
     this.model.api.kneel = this.idx & 1;

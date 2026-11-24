@@ -55,7 +55,7 @@
     if (teamMats[team.id]) return teamMats[team.id];
     const ct = new T.CanvasTexture(camoCanvas(team.camo));
     ct.wrapS = ct.wrapT = T.RepeatWrapping;
-    if (team.camo === 'pixelgreen' || team.camo === 'mm14') { ct.magFilter = T.NearestFilter; }
+    if (team.camo === 'pixelgreen' || team.camo === 'mm14' || (BC.CAMO_PIX && BC.CAMO_PIX[team.camo])) { ct.magFilter = T.NearestFilter; }
     const ft = new T.CanvasTexture(BC.drawFlag(team.flag, 128, 86)); ft.anisotropy = 4;
     const o = {
       camo: new T.MeshLambertMaterial({ map: ct }),
@@ -115,7 +115,22 @@
   const rankMat = new T.MeshLambertMaterial({ map: rankTex, side: T.DoubleSide });
 
   // Soldado: pernas articuladas, colete (4 tipos), mochila (5 tipos), 8 tipos de cobertura de cabeça, rosto e extras por agente
-  BC.makeChar = function (team, gunId, agentIdx) {
+  // nº de identificação estável por soldado (nome + país) e fitas de identificação nas fardas
+  BC.soldierId = function (name, teamId) { let h = 11; const k = (name || '') + '|' + (teamId || ''); for (let i = 0; i < k.length; i++) h = (h * 31 + k.charCodeAt(i)) >>> 0; return 1000 + (h % 9000); };
+  const lum = (hex) => { const c = new T.Color(hex); return 0.299 * c.r + 0.587 * c.g + 0.114 * c.b; };
+  const idMats = {};
+  function idMat(team, name, kind) {
+    const key = kind + '|' + team.id + '|' + name; if (idMats[key]) return idMats[key];
+    const num = BC.soldierId(name, team.id), code = String(team.flag || team.id).slice(0, 2).toUpperCase(), dark = lum(team.helmet) < 0.45;
+    const tape = dark ? ['#2a3022', '#d9d2b0'] : ['#8a7d58', '#15140f'];
+    const cv = document.createElement('canvas'); cv.width = 256; cv.height = kind === 'back' ? 128 : 64; const g = cv.getContext('2d'); g.textAlign = 'center'; g.textBaseline = 'middle';
+    if (kind === 'name') { g.fillStyle = tape[0]; g.fillRect(0, 0, 256, 64); g.strokeStyle = tape[1]; g.globalAlpha = 0.55; g.lineWidth = 3; g.strokeRect(3, 3, 250, 58); g.globalAlpha = 1; g.fillStyle = tape[1]; let fs = 40; g.font = 'bold ' + fs + 'px Arial'; const t = name.toUpperCase(); while (g.measureText(t).width > 232 && fs > 14) { fs -= 2; g.font = 'bold ' + fs + 'px Arial'; } g.fillText(t, 128, 34); }
+    else { g.fillStyle = tape[0]; g.fillRect(0, 0, 256, 128); g.strokeStyle = tape[1]; g.lineWidth = 4; g.strokeRect(4, 4, 248, 120); g.fillStyle = tape[1]; g.font = 'bold 30px Arial'; g.fillText(code + ' · ID', 128, 28); g.font = 'bold 74px "Courier New", monospace'; g.fillText(String(num), 128, 82); g.font = 'bold 18px Arial'; g.fillText(name.toUpperCase(), 128, 115); }
+    const t = new T.CanvasTexture(cv); t.anisotropy = 4;
+    return (idMats[key] = new T.MeshLambertMaterial({ map: t, side: T.DoubleSide, polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4 }));
+  }
+  const idPlane = new T.PlaneGeometry(1, 1);
+  BC.makeChar = function (team, gunId, agentIdx, idName) {
     const A = BC.AGENTS[(agentIdx || 0) % BC.AGENTS.length], mats = BC.teamMats(team), bg = BC.botGun(gunId), G = bg.G;
     const skinHex = SKINS[A.skin % SKINS.length], fk = [A.glasses, A.beard, A.paint, A.head === 'balaclava'].join();
     mats.faces = mats.faces || {}; if (!mats.faces[skinHex + fk]) mats.faces[skinHex + fk] = new T.MeshLambertMaterial({ map: BC.faceTex(skinHex, { glasses: A.glasses, beard: A.beard, paint: A.paint, mask: A.head === 'balaclava' }) });
@@ -187,6 +202,11 @@
     const armsG = new T.Group(); armsG.position.set(0, sy, 0); up.add(armsG);
     { const gA = BC.mergeGeoms(camoA), gB = BC.mergeGeoms(gearA); gA.translate(0, -sy, 0); gB.translate(0, -sy, 0); armsG.add(new T.Mesh(gA, mats.camo), new T.Mesh(gB, mats.gear)); }
     if (antenna.length) up.add(new T.Mesh(BC.mergeGeoms(antenna), mats.gear));
+    if (idName) { // fita com o nome no peito (direita) e placa com nº de identificação nas costas
+      const fz = V === 'chest' ? 0.18 : V === 'light' ? 0.128 : 0.16, bz = P === 'none' ? (V === 'chest' ? 0.162 : V === 'light' ? 0.124 : 0.157) : packBack;
+      const nm = new T.Mesh(idPlane, idMat(team, idName, 'name')); nm.scale.set(0.12, 0.03, 1); nm.position.set(-0.075, y(1.4), -fz); nm.rotation.y = Math.PI; up.add(nm);
+      const bk = new T.Mesh(idPlane, idMat(team, idName, 'back')); bk.scale.set(0.2, 0.1, 1); bk.position.set(0, y(P === 'ruck' ? 1.3 : 1.27), bz + 0.004); up.add(bk);
+    }
     // ---- cabeça ----
     const head = new T.Group(); head.position.set(0, y(1.62), 0); up.add(head);
     const H_ = A.head, hm = new T.Mesh(SPH, mats.faces[skinHex + fk]); hm.scale.set(0.088, 0.108, 0.098); head.add(hm);

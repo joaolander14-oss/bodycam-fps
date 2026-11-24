@@ -128,7 +128,7 @@
     setModel(wi, ag) {
       if (this.model) G.scene.remove(this.model.root);
       const spec = BC.WEAPONS[wi] || BC.WEAPONS[0]; this.wi = wi; this.ag = ag;
-      this.model = BC.makeChar(G.teamDefs[this.team], spec.id, ag); G.scene.add(this.model.root); this.spec = spec;
+      this.model = BC.makeChar(G.teamDefs[this.team], spec.id, ag, this.name); G.scene.add(this.model.root); this.spec = spec;
     }
     setTarget(x, y, z, yaw, pitch, stn) {
       this.tx = x; this.ty = y; this.tz = z; this.tyaw = yaw; this.tpitch = pitch; this.tstn = stn;
