@@ -290,7 +290,7 @@
   function snapshot() {
     const P = G.player, pl = [[0, r2(P.x), r2(P.y), r2(P.z), r3(P.yaw), r3(P.pitch), r2(P.stn), P.alive ? 1 : 0, Math.round(P.hp), widx(P.w[P.cur].spec.id), P.kills | 0, P.deaths | 0, P.team, 0]];
     for (const r of remotes) pl.push([r.id, r2(r.x), r2(r.y), r2(r.z), r3(r.yaw), r3(r.pitch), r2(r.stn), r.alive ? 1 : 0, Math.round(r.hp), r.wi, r.kills | 0, r.deaths | 0, r.team, r.ag]);
-    const bs = []; G.bots.forEach((b, i) => { if (b.model) bs.push([i, r2(b.x), r2(b.y), r2(b.z), r3(b.yaw), r3(b.pitch), r2(b.stn), b.alive ? 1 : 0, widx(b.wid), b.agentIdx | 0, b.kills | 0, b.deaths | 0, b.team]); });
+    const bs = []; G.bots.forEach((b, i) => { if (b.model) bs.push([i, r2(b.x), r2(b.y), r2(b.z), r3(b.yaw), r3(b.pitch), r2(b.stn), (b.alive && !(b.faintT > 0)) ? 1 : 0, widx(b.wid), b.agentIdx | 0, b.kills | 0, b.deaths | 0, b.team]); });
     bcast({ t: 's', sc: G.score.map((v) => Math.round(v * 10) / 10), p: pl, b: bs, pt: G.points ? G.points.map((q) => [Math.round(q.c * 100) / 100, q.owner]) : 0 });
   }
 

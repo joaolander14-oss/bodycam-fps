@@ -74,7 +74,7 @@
     this.hp = 100; this.alive = true; this.deadT = 0; this.mag = this.spec.mag; this.reloadT = 0; this.fireT = 0.5; this.burst = 0;
     this.yaw = this.team === 0 ? 0 : Math.PI; this.pitch = 0; this.target = null; this.engT = 0; this.reactT = 0; this.lostT = 99; this.lastSeen = null;
     this.wp = null; this.wpT = 0; this.stuckT = 0; this.sx = this.x; this.sz = this.z; this.strafe = 1; this.strafeT = 1; this.percT = rng() * 0.3; this.pause = 0; this.alertT = 0;
-    this.avoidDir = 0; this.avoidT = 0; this.sprint = false; this.crouch = 0; this.prone = 0; this.stn = 0; this.wantStn = 0; this.gren = (rng() < 0.7) ? (rng() < 0.6 ? 'frag' : rng() < 0.6 ? 'flash' : 'smoke') : null; this.grenT = 6 + rng() * 22; this.blindT = 0; this.flee = null; this.bleed = []; this.stains = 0; this.death = null; this.cover = null; this.coverT = 0; this.phT = 0; this.phase = 'patrol';
+    this.avoidDir = 0; this.avoidT = 0; this.sprint = false; this.crouch = 0; this.prone = 0; this.stn = 0; this.wantStn = 0; this.gren = (rng() < 0.7) ? (rng() < 0.6 ? 'frag' : rng() < 0.6 ? 'flash' : 'smoke') : null; this.grenT = 6 + rng() * 22; this.blindT = 0; this.flee = null; this.bleed = []; this.stains = 0; this.death = null; this.bld = 0; this.faintT = 0; this.lastFrom = null; this.cover = null; this.coverT = 0; this.phT = 0; this.phase = 'patrol';
     if (this.model) { G.scene.remove(this.model.root); }
     this.agentIdx = (rng() * BC.AGENTS.length) | 0; this.model = BC.makeChar(G.teamDefs[this.team], this.wid, this.agentIdx);
     G.scene.add(this.model.root); this.model.root.rotation.set(0, this.yaw, 0);
@@ -97,12 +97,18 @@
     if (amount > 0) this.G.fx.wound(this, zone, dir, amount);
     this.hp -= amount; this.hitFlash = 0.15; this.coverT = 0; this.cover = null;
     if (!this.target && from && from.alive && from.team !== this.team) { this.target = from; this.engT = 0; this.reactT = this.G.diff.react * 0.6; this.lostT = 0; this.lastSeen = { x: from.x, z: from.z }; }
+    const RG = this._reg; this._reg = null;
+    if (RG && this.hp > 0) { this.bld = (this.bld || 0) + RG.bleed * (RG.pw || 1); this.lastFrom = from; this.lastWid = wid; if (RG.faint && !(this.faintT > 0) && Math.random() < RG.faint) { this.die(from, wid, false, zone, dir, kind, amount, RG.fmin + Math.random() * (RG.fmax - RG.fmin)); return false; } }
     if (this.hp <= 0) { this.die(from, wid, zone === 'head', zone, dir, kind, amount); return true; }
     return false;
   };
-  B.die = function (from, wid, head, zone, dir, kind, amount) {
+  B.die = function (from, wid, head, zone, dir, kind, amount, faintOnly) {
     const G = this.G, rng = G.rng, spec = BC.WMAP[wid];
-    this.alive = false; this.deadT = 0; this.deaths++; this.respawnT = 6 + rng() * 2; G.fx.pool(this.x, this.y, this.z, amount);
+    if (this.faintT > 0 && !faintOnly) { // já estava desmaiado: só morre (sem cair de novo)
+      this.faintT = 0; this.alive = false; this.deadT = 0; this.deaths++; this.respawnT = 6 + rng() * 2; G.fx.pool(this.x, this.y, this.z, amount); G.onKill(from, this, wid, head); return;
+    }
+    if (faintOnly) { this.faintT = faintOnly; this.target = null; this.cover = null; this.deadT = 0; }
+    else { this.alive = false; this.deadT = 0; this.deaths++; this.respawnT = 6 + rng() * 2; G.fx.pool(this.x, this.y, this.z, amount); }
     let dx = dir ? dir.x : -Math.sin(this.yaw) * -1, dz = dir ? dir.z : -Math.cos(this.yaw) * -1; const l = Math.hypot(dx, dz) || 1; dx /= l; dz /= l;
     const dist = from ? Math.hypot(from.x - this.x, from.z - this.z) : 30;
     const energy = kind === 'blast' ? 4 : !spec ? 2 : spec.cls === 'shotgun' ? (dist < 9 ? 3 : 2) : (amount >= 95 || spec.dmg >= 95) ? 3 : (spec.dmg >= 62 || spec.cls === 'sniper') ? 2 : 1;
@@ -115,13 +121,15 @@
     if (type === 'crumple' || type === 'headdrop') { fx = -dx * 0.8 + px * 0.3; fz = -dz * 0.8 + pz * 0.3; } else if (type === 'slump' || type === 'legs') { fx = px; fz = pz; }
     const fl = Math.hypot(fx, fz) || 1;
     this.death = { type, t: 0, dur: P[0], kn: P[1], theta: P[2], fx: fx / fl, fz: fz / fl, dx, dz, side, lx: this.x, lz: this.z, energy, flail: rng() * 6, legSide: side };
-    G.onKill(from, this, wid, head);
-    if (G.fx.deathBlood) G.fx.deathBlood(this, zone, dir, energy, amount);
+    if (!faintOnly) { G.onKill(from, this, wid, head); if (G.fx.deathBlood) G.fx.deathBlood(this, zone, dir, energy, amount); }
     if (BC.Audio.thud) setTimeout(() => BC.Audio.thud(Math.hypot(G.player.x - this.x, G.player.z - this.z), G.panTo(this.x, this.z)), 450 + this.death.dur * 300);
   };
 
   B.pickWp = function () {
     const G = this.G, w = G.world, rng = G.rng, side = this.team === 0 ? -1 : 1, H = w.play;
+    if (G.hunt) { // caça: vai atrás dos animais mais próximos
+      const al = G.actors.filter((a) => a.isAnimal && a.alive); if (al.length) { al.sort((p, q) => Math.hypot(p.x - this.x, p.z - this.z) - Math.hypot(q.x - this.x, q.z - this.z)); const t = al[(rng() * Math.min(3, al.length)) | 0]; this.wp = { x: t.x + (rng() - 0.5) * 12, z: t.z + (rng() - 0.5) * 12 }; this.wpT = 20; this.sprint = rng() < 0.2; return; }
+    }
     if (G.points && G.points.length && rng() < 0.85) { // modos de objetivo: vai para um ponto (prefere os que o time ainda não domina)
       const mine = this.team, list = G.points.filter((q) => q.owner !== mine), pool = list.length && rng() < 0.75 ? list : G.points, q = pool[(rng() * pool.length) | 0], a = rng() * 6.28, r = Math.sqrt(rng()) * q.r * 0.8;
       this.wp = { x: q.x + Math.cos(a) * r, z: q.z + Math.sin(a) * r }; this.wpT = 25; this.sprint = rng() < 0.3; return;
@@ -133,7 +141,7 @@
   };
 
   B.visible = function (e) {
-    const w = this.G.world, ex = e.x, ez = e.z, ey = e.y + (e.isPlayer ? 1.0 * (e.h / 1.78) : 1.1);
+    const w = this.G.world, ex = e.x, ez = e.z, ey = e.y + (e.isPlayer ? 1.0 * (e.h / 1.78) : e.isAnimal ? e.h * 0.5 : 1.1);
     return w.los(this.x, this.y + this.eyeH(), this.z, ex, ey, ez);
   };
 
@@ -141,7 +149,7 @@
     const G = this.G; let best = null, bd = 1e9;
     const fx = -Math.sin(this.yaw), fz = -Math.cos(this.yaw);
     for (const e of G.actors) {
-      if (!e.alive || e.team === this.team) continue;
+      if (!e.alive || e.team === this.team || (G.hunt && !e.isAnimal)) continue;
       const dx = e.x - this.x, dz = e.z - this.z, d = Math.hypot(dx, dz);
       const maxD = this.spec.cls === 'sniper' ? 110 : 85; if (d > maxD || d > bd) continue;
       const cosA = (dx * fx + dz * fz) / (d || 1);
@@ -188,7 +196,12 @@
 
   B.update = function (dt) {
     const G = this.G, w = G.world;
-    if (!this.alive) {
+    if (!this.alive || this.faintT > 0) {
+      if (this.alive) { // desmaiado: continua sangrando, leva dano e pode acordar
+        this.faintT -= dt;
+        if (this.bld > 0.01) { this.hp -= this.bld * dt; this.bld *= Math.exp(-0.08 * dt); if (this.hp <= 0) { this.die(this.lastFrom, this.lastWid, false, 'body', null, null, 20); return; } }
+        if (this.faintT <= 0) { this.faintT = 0; this.death = null; this.hp = Math.max(this.hp, 10); this.model.root.quaternion.identity(); this.model.root.rotation.set(0, this.yaw, 0); this.stn = 1.2; this.wantStn = 1; this.bld *= 0.5; this.alertT = 2; return; }
+      }
       this.deadT += dt; const m = this.model, d = this.death;
       if (this.bleed && this.bleed.length && this.deadT < 5) G.fx.bleedTick(this, dt);
       if (m && d) {
@@ -211,9 +224,9 @@
         m.armsG.rotation.x = -0.9 * clampT + fl * 0.5; m.armsG.rotation.z = fl * 0.4; m.up.rotation.x = 0.25 * buck + (d.type === 'headblast' ? -0.3 : 0); m.up.rotation.z = fl * 0.1;
         m.head.rotation.x = (d.type === 'headblast' ? -0.9 : d.type === 'headdrop' ? 0.5 : (d.dx * d.fx + d.dz * d.fz) > 0 ? -0.5 : 0.5) * Math.min(1, d.t / 0.3); m.head.rotation.z = 0.25 * d.side * clampT;
         if (d.t > 0.6 && !d.landed && theta > 1.3) { d.landed = true; G.fx.puff(this.x, this.y + 0.1, this.z, BC.SURF[w.surf] || 0x777777, 4, 1.2, 0.5, 0.5); }
-        if (this.deadT > 14) m.root.visible = false;
+        if (!this.alive && this.deadT > 14) m.root.visible = false;
       }
-      this.respawnT -= dt; if (this.respawnT <= 0 && G.running) this.spawn();
+      if (!this.alive) { this.respawnT -= dt; if (this.respawnT <= 0 && G.running) this.spawn(); }
       return;
     }
     const diff = G.diff;
@@ -224,6 +237,7 @@
       if (BC.Gren && BC.Gren.list.length && !this.flee) for (const g of BC.Gren.list) { const gd = Math.hypot(g.p.x - this.x, g.p.z - this.z); if (gd < 9 && g.type !== 'smoke' && g.t > 0.4) { const l = gd || 1; this.flee = { dx: (this.x - g.p.x) / l, dz: (this.z - g.p.z) / l, t: 2.4 }; break; } }
     }
     if (this.bleed.length) G.fx.bleedTick(this, dt);
+    if (this.bld > 0.01) { this.hp -= this.bld * dt; this.bld *= Math.exp(-0.08 * dt); if (this.hp <= 0) { this.die(this.lastFrom, this.lastWid, false, 'body', null, null, 20); return; } }
     if (this.target && (!this.target.alive)) { this.target = null; this.lostT = 99; }
     if (!this.seen) this.lostT += dt;
     if (this.target && this.lostT > 4) { this.target = null; }
@@ -238,7 +252,7 @@
       wantYaw = Math.atan2(-dx, -dz); this.engT += dt;
       this.grenT -= dt;
       if (this.gren && this.grenT <= 0 && ((!this.seen && this.lostT > 0.4 && d > 10 && d < 38) || (this.seen && d > 14 && d < 32 && this.phase === 'hide' && G.rng() < 0.02))) this.throwGren(tx, tz, e.y);
-      const eyeY = this.y + this.eyeH(), ty = e.y + (e.isPlayer ? 1.0 * (e.h / 1.78) : 1.15);
+      const eyeY = this.y + this.eyeH(), ty = e.y + (e.isPlayer ? 1.0 * (e.h / 1.78) : e.isAnimal ? e.h * 0.5 : 1.15);
       wantPitch = BC.clamp(Math.atan2(ty - eyeY, d), -0.6, 0.6);
       const pref = PREF[spec.cls], fx = -Math.sin(this.yaw), fz = -Math.cos(this.yaw);
       this.coverT -= dt; this.phT -= dt;
@@ -325,7 +339,7 @@
     const interval = 60 / spec.rpm;
     const sem = !spec.auto;
     const eye = { x: this.x, y: this.y + this.eyeH(), z: this.z };
-    const ty = e.y + (e.isPlayer ? 1.0 * (e.h / 1.78) : 1.12) + (rng() < 0.08 ? 0.45 : 0);
+    const ty = e.y + (e.isPlayer ? 1.0 * (e.h / 1.78) : e.isAnimal ? e.h * 0.5 : 1.12) + (!e.isAnimal && rng() < 0.08 ? 0.45 : 0);
     let dx = e.x - eye.x, dy = ty - eye.y, dz = e.z - eye.z; const l = Math.hypot(dx, dy, dz); dx /= l; dy /= l; dz /= l;
     // erro de pontaria: maior no início do engajamento, com distância e em movimento
     const moving = Math.hypot(this.vx, this.vz) > 1;

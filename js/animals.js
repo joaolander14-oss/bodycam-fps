@@ -54,7 +54,7 @@
   const sv0 = (a) => Math.hypot(a.vx, a.vz);
   A.damage = function (amount, zone, from, wid) {
     if (!this.alive) return false; this.hp -= amount; this.hurtT = 0.2;
-    if (this.sp.aggr) this.angry = 10; else this.fleeT = 6;
+    this.lastAtk = from; if (this.sp.aggr) this.angry = 10; else this.fleeT = 6;
     if (this.hp <= 0) { this.alive = false; this.deadT = 0; if (BC.Modes) BC.Modes.animalKilled(this, from); return true; }
     return false;
   };
@@ -67,12 +67,26 @@
       if (this.deadT > 40) m.visible = false; return;
     }
     this.cd -= dt; this.angry = Math.max(0, this.angry - dt); this.fleeT = Math.max(0, this.fleeT - dt); this.hurtT = Math.max(0, (this.hurtT || 0) - dt);
-    const dx = P.x - this.x, dz = P.z - this.z, d = Math.hypot(dx, dz) || 1; let wx = 0, wz = 0, speed = 0;
-    if (sp.aggr && P.alive && (d < 30 || this.angry > 0) && (!P.sneak || d < 12 || this.angry > 0)) {
-      this.yaw = Math.atan2(-dx, -dz); if (d > 1.5) { wx = dx / d; wz = dz / d; speed = sp.sp * 1.7; }
-      else if (this.cd <= 0) { this.cd = 1.2; G.hurtPlayer(sp.dmg, { x: this.x, z: this.z, team: -2, alive: true, name: sp.n, isAnimal: true }, 'body', 'animal'); }
-    } else if (!sp.aggr && P.alive && (d < 16 || this.fleeT > 0)) {
-      wx = -dx / d; wz = -dz / d; speed = sp.fl; this.yaw = Math.atan2(-wx, -wz);
+    // alvo: o ator vivo mais próximo que o animal realmente enxerga (sem paredes) e alcança (sem estar muito acima/abaixo)
+    this.tT = (this.tT || 0) - dt; let near = null, nd = 1e9;
+    if (this.tT <= 0) {
+      this.tT = 0.25; let tg = null, td = 1e9;
+      for (const e of G.actors) {
+        if (!e.alive || e.isAnimal || e.team < 0) continue; const dd = Math.hypot(e.x - this.x, e.z - this.z); if (dd > 34 || dd > td) continue;
+        if (Math.abs(e.y - this.y) > 2.2 || !w.los(this.x, this.y + 0.5, this.z, e.x, e.y + 1.0, e.z)) continue; td = dd; tg = e;
+      }
+      if (!tg && this.angry > 0 && this.lastAtk && this.lastAtk.alive && !this.lastAtk.isAnimal && Math.abs(this.lastAtk.y - this.y) < 2.2 && w.los(this.x, this.y + 0.5, this.z, this.lastAtk.x, this.lastAtk.y + 1.0, this.lastAtk.z)) tg = this.lastAtk;
+      this.tgt = tg;
+    }
+    const tgt = this.tgt && this.tgt.alive ? this.tgt : null;
+    for (const e of G.actors) { if (!e.alive || e.isAnimal || e.team < 0) continue; const dd = Math.hypot(e.x - this.x, e.z - this.z); if (dd < nd) { nd = dd; near = e; } }
+    let wx = 0, wz = 0, speed = 0;
+    if (sp.aggr && tgt) {
+      const dx = tgt.x - this.x, dz = tgt.z - this.z, d = Math.hypot(dx, dz) || 1; this.yaw = Math.atan2(-dx, -dz);
+      if (d > 1.5) { wx = dx / d; wz = dz / d; speed = sp.sp * 1.7; }
+      else if (this.cd <= 0 && Math.abs(tgt.y - this.y) < 1.6) { this.cd = 1.2; if (tgt.isPlayer) G.hurtPlayer(sp.dmg, { x: this.x, z: this.z, team: -2, alive: true, name: sp.n, isAnimal: true }, 'body', 'animal'); else tgt.damage(sp.dmg, 'body', this, 'animal', { x: dx / d, y: 0, z: dz / d }, null); }
+    } else if (!sp.aggr && near && (nd < 16 || this.fleeT > 0)) {
+      const dx = near.x - this.x, dz = near.z - this.z, d = Math.hypot(dx, dz) || 1; wx = -dx / d; wz = -dz / d; speed = sp.fl; this.yaw = Math.atan2(-wx, -wz);
     } else {
       this.wt -= dt;
       if (!this.wp || this.wt <= 0 || Math.hypot(this.wp.x - this.x, this.wp.z - this.z) < 1.2) { if (Math.random() < 0.45) { this.wt = 2 + Math.random() * 4; this.wp = null; } else { const a = Math.random() * 6.28, r = 6 + Math.random() * 18; this.wp = { x: this.x + Math.cos(a) * r, z: this.z + Math.sin(a) * r }; this.wt = 8; } }

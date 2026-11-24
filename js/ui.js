@@ -155,9 +155,9 @@
     if (!G.running || G.over) return;
     $('pause').classList.toggle('hidden', locked); G.paused = !locked && !G.net;
   };
-  UI.endHunt = function (k, n, pts) {
-    $('endT').textContent = k >= n ? 'CAÇA COMPLETA' : 'FIM DA CAÇA'; $('endT').style.color = '#9fe6a3';
-    $('endS').textContent = 'Animais abatidos: ' + k + ' de ' + n + ' · pontos: ' + pts; $('end').classList.remove('hidden'); if (document.exitPointerLock) document.exitPointerLock();
+  UI.endHunt = function (win, sc, k) {
+    $('endT').textContent = win ? 'VITÓRIA NA CAÇA' : sc[0] === sc[1] ? 'EMPATE NA CAÇA' : 'DERROTA NA CAÇA'; $('endT').style.color = win ? '#9fe6a3' : '#ff8a7a';
+    $('endS').textContent = G.teamDefs[0].name + ' ' + Math.floor(sc[0]) + ' pts (' + k[0] + ' animais) × ' + Math.floor(sc[1]) + ' pts (' + k[1] + ' animais) ' + G.teamDefs[1].name; $('end').classList.remove('hidden'); if (document.exitPointerLock) document.exitPointerLock();
   };
   UI.endMatch = function (win) {
     $('endT').textContent = win ? 'VITÓRIA' : 'DERROTA'; $('endT').style.color = win ? '#9fe6a3' : '#ff8a7a';
@@ -172,8 +172,8 @@
     $('tefill').style.width = (P.tension || 0).toFixed(0) + '%'; $('tefill').style.background = P.tension > 70 ? '#ff5a4a' : P.tension > 40 ? '#e8a84a' : '#d8d86a'; $('mofill').style.width = (P.morale || 0).toFixed(0) + '%';
     $('hpfill').style.width = P.hp + '%'; $('hpfill').style.background = P.hp < 30 ? '#ff5a4a' : P.hp < 60 ? '#e8c86a' : '#9ad79a'; $('hpn').textContent = Math.ceil(P.hp);
     const w = P.w[P.cur], a = w.mag + '|' + w.reserve + '|' + (P.rl ? 1 : 0); if (a !== lastAmmo) { lastAmmo = a; $('am').textContent = w.mag; $('ar').textContent = '/ ' + w.reserve; $('am').style.color = w.mag <= Math.ceil(w.spec.mag * 0.25) ? '#ff8a6a' : ''; }
-    if (G.hunt) { const l = Math.ceil(G.hunt.left || 0); $('scoreA').textContent = Math.floor(G.score[0]); $('scoreB').textContent = Math.floor(l / 60) + ':' + String(l % 60).padStart(2, '0'); $('timeL').textContent = ' pts'; }
-    else { $('scoreA').textContent = Math.floor(G.score[0]); $('scoreB').textContent = Math.floor(G.score[1]); $('timeL').textContent = '/' + G.killLimit; }
+    if (false) { }
+    else { $('scoreA').textContent = Math.floor(G.score[0]); $('scoreB').textContent = Math.floor(G.score[1]); $('timeL').textContent = G.hunt ? '' : '/' + G.killLimit; }
     if ((G.frame || 0) % 6 === 0) $('pts').innerHTML = BC.Modes.hudText();
     const hd = ((-P.yaw * 180 / Math.PI) % 360 + 360) % 360, dirs = ['N', 'NE', 'L', 'SE', 'S', 'SO', 'O', 'NO'];
     $('compass').textContent = dirs[Math.round(hd / 45) % 8] + ' ' + String(Math.round(hd) % 360).padStart(3, '0') + '°';

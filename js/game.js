@@ -123,7 +123,7 @@
     // atores
     G.actors = [P]; G.bots = [];
     const n = S.size, rng = G.rng;
-    if (G.net !== 'guest' && S.mode !== 'hunt') for (let team = 0; team < 2; team++) for (let i = 0; i < (team === 0 ? n - 1 : n); i++) { const b = new BC.Bot(G, team, i + team * 20); G.bots.push(b); G.actors.push(b); }
+    if (G.net !== 'guest') for (let team = 0; team < 2; team++) for (let i = 0; i < (team === 0 ? n - 1 : n); i++) { const b = new BC.Bot(G, team, i + team * 20); G.bots.push(b); G.actors.push(b); }
     aimTog = false; G.killLimit = Math.max(30, S.size * 5); G.score = [0, 0]; G.time = 0; G.over = false; G.running = true; G.matchT = 0;
     spawnPlayer(true);
     for (const b of G.bots) { b.respawnT = 0.1 + rng() * 1.5; }
@@ -144,7 +144,7 @@
       if (m > bd) { bd = m; best = s; }
     }
     P.x = best.x; P.z = best.z; P.y = w.heightAt(P.x, P.z); P.vx = P.vy = P.vz = 0; P.onGround = true;
-    P.hp = 100; P.alive = true; P.deadT = 0; P.yaw = 0; P.pitch = 0; P.rc.p = P.rc.y = 0; P.rl = null; P.swapT = 0; P.adsT = 0; P.crouch = 0; P.prone = 0; P.stn = 0; P.proneTog = false; P.eyeY = 1.4; P.fall = 0; P.thr = null; P.gren = { frag: 2, flash: 1, smoke: 1 }; P.grSel = 'frag'; G.blind = 0;
+    P.hp = 100; P.alive = true; P.deadT = 0; P.yaw = 0; P.pitch = 0; P.rc.p = P.rc.y = 0; P.rl = null; P.swapT = 0; P.adsT = 0; P.crouch = 0; P.prone = 0; P.stn = 0; P.proneTog = false; P.eyeY = 1.4; P.fall = 0; P.thr = null; P.bld = 0; P.faintT = 0; P.gren = { frag: 2, flash: 1, smoke: 1 }; P.grSel = 'frag'; G.blind = 0;
     for (const wp of P.w) { wp.mag = wp.spec.mag; wp.reserve = wp.spec.reserve; }
     selectWeapon(0, false); P.tension = 15; P.morale = 60; if (!first) { G.glitch = 1.6; G.flashScreen = 0.1; }
     for (const t of w.crates) t.t = 0;
@@ -160,30 +160,34 @@
   G.selectWeapon = function (i) { const P = G.player; if (!P.alive || P.thr || i === P.cur || i < 0 || i >= P.w.length) return; P.swapTo = i; P.swapT = 0.7; P.rl = null; P.swapping = true; BC.Audio.click(0.25); BC.VMA.reset(vm[P.cur]); };
 
   // ------------------------------------------------------------ tiros (jogador e bots)
-  G.fire = function (shooter, o, d, spec, scale, muzzle, tracerOk) {
+  function fireCore(shooter, o, d, spec, scale, muzzle, tracerOk, depth) {
     const w = G.world, maxT = Math.min(450, spec.maxRange * 1.4 + 50);
     const h = w.raycast(o.x, o.y, o.z, d.x, d.y, d.z, maxT);
     let tW = maxT, hp = null;
     if (h) { tW = h.t; hp = { nx: h.nx, ny: h.ny, nz: h.nz, tag: h.tag }; }
     let best = null, bz = null, bt = tW;
     for (const e of G.actors) {
-      if (e === shooter || !e.alive || e.team === shooter.team) continue;
+      if (e === shooter || !e.alive || e.team === shooter.team || (G.hunt && !e.isAnimal)) continue;
       const r = BC.hitActor(e, o.x, o.y, o.z, d.x, d.y, d.z, bt); if (r && r.t < bt) { bt = r.t; best = e; bz = r.zone; }
     }
     const px = o.x + d.x * bt, py = o.y + d.y * bt, pz = o.z + d.z * bt;
     if (best) {
       const mul = bz === 'head' ? spec.headMul : bz === 'legs' ? spec.legMul : 1;
-      const dmg = spec.dmg * mul * BC.falloff(spec, bt) * scale;
-      fx.blood({ x: px, y: py, z: pz }, d, bz, w, dmg);
+      let dmg = spec.dmg * mul * BC.falloff(spec, bt) * scale;
+      const reg = best.isAnimal ? null : BC.Anatomy.hit(best, px, py, pz, bz, spec);
+      if (reg) { dmg = spec.dmg * reg.mul * BC.falloff(spec, bt) * scale; if (reg.kill) dmg = Math.max(dmg, 999); reg.pw = BC.clamp(spec.dmg * scale / 55, 0.5, 2.4); if (shooter.isPlayer) G.lastRegion = reg.n; }
+      fx.blood({ x: px, y: py, z: pz }, d, bz, w, Math.min(dmg, 160));
       let killed = false;
       if (!best.isPlayer && shooter.isPlayer && bt < 3.2) BC.UI.lensBlood(1 + Math.round(dmg / 45));
-      if (best.isPlayer) killed = G.hurtPlayer(dmg, shooter, bz, spec.id);
-      else killed = best.damage(dmg, bz, shooter, spec.id, d, null);
+      if (best.isPlayer) { G._reg = reg; killed = G.hurtPlayer(dmg, shooter, bz, spec.id); }
+      else { best._reg = reg; killed = best.damage(dmg, bz, shooter, spec.id, d, null); }
       
     } else if (hp) {
       fx.impact({ x: px, y: py, z: pz }, hp, hp.tag, spec.pellets > 1 ? false : spec.dmg > 60);
       const P = G.player;
       if (!shooter.isPlayer) { const dd = Math.hypot(px - P.x, pz - P.z); if (dd < 25) BC.Audio.impact(dd, G.panTo(px, pz), hp.tag === 'metal' ? 'metal' : 'x'); }
+      // penetração: o calibre decide se atravessa o material (e perde dano ao atravessar)
+      if (depth < 2 && Math.abs(hp.ny) < 0.75) { const k = BC.penetrate(spec, hp.tag); if (k > 0) fireCore(shooter, { x: px + d.x * 0.45, y: py + d.y * 0.45, z: pz + d.z * 0.45 }, d, spec, scale * Math.max(0.25, 0.8 - k * 0.45), null, false, depth + 1); }
     }
     if (tracerOk && !shooter.isPlayer && muzzle && G.rng() < 0.4) fx.tracer(muzzle, { x: px, y: py, z: pz });
     if (muzzle && !shooter.isPlayer && !spec.sup) { fx.flash(muzzle, 0.5); }
@@ -192,7 +196,8 @@
       const P = G.player, cx = P.x - o.x, cy = P.y + 1.3 - o.y, cz = P.z - o.z, tp = cx * d.x + cy * d.y + cz * d.z;
       if (tp > 3 && tp < bt) { const qx = cx - d.x * tp, qy = cy - d.y * tp, qz = cz - d.z * tp; if (qx * qx + qy * qy + qz * qz < 4 && !best) BC.Audio.crack(G.panTo(o.x + d.x * tp, o.z + d.z * tp)); }
     }
-  };
+  }
+  G.fire = function (shooter, o, d, spec, scale, muzzle, tracerOk) { return fireCore(shooter, o, d, spec, scale, muzzle, tracerOk, 0); };
 
   // jogo online: o anfitrião decide o dano; o convidado só mostra o efeito
   G.netHurt = function (hp, dmg, fx_, fz_, zone) {
@@ -216,7 +221,9 @@
   G.netRespawn = function () { if (G.player && !G.player.alive) spawnPlayer(false); };
   G.hurtPlayer = function (dmg, from, zone, wid) {
     const P = G.player; if (!P.alive || G.net === 'guest') return false;
-    P.hp -= dmg; P.lastHurt = G.time; G.stress(dmg); BC.Audio.hurt(); G.glitch = Math.min(1, G.glitch + 0.35 + dmg / 80); P.hitFlash = 1;
+    P.hp -= dmg; P.lastHurt = G.time; G.stress(dmg);
+    const RG = G._reg; G._reg = null;
+    if (RG && P.hp > 0) { P.bld = (P.bld || 0) + RG.bleed * (RG.pw || 1); P.lastFrom = from; if (RG.faint && Math.random() < RG.faint && !(P.faintT > 0)) { P.faintT = RG.fmin + Math.random() * (RG.fmax - RG.fmin); P.fall = 0; aimTog = false; mouseL = false; } } BC.Audio.hurt(); G.glitch = Math.min(1, G.glitch + 0.35 + dmg / 80); P.hitFlash = 1;
     BC.UI.indicator(Math.atan2(from.x - P.x, from.z - P.z)); BC.UI.lensBlood(Math.min(6, 2 + Math.round(dmg / 25)));
     if (P.hp <= 0) { P.hp = 0; aimTog = false; P.alive = false; P.deadT = 0; P.deaths++; P.fall = 0; G.glitch = 1.6; BC.Audio.death(); fx.pool(P.x, P.y, P.z, dmg); G.onKill(from, P, wid, zone === 'head'); return true; }
     return false;
@@ -307,6 +314,9 @@
       if (P.deadT > 4.2 && G.running && !G.over && G.net !== 'guest') spawnPlayer(false);
       return;
     }
+    if (P.fall > 0 && !(P.faintT > 0)) P.fall = Math.max(0, P.fall - dt * 1.4);
+    if (P.bld > 0.01) { P.bld *= Math.exp(-0.08 * dt); P.hp -= P.bld * dt; if (P.hp <= 0.5) { P.hp = 1; G.hurtPlayer(5, P.lastFrom || { x: P.x, z: P.z, team: -1, alive: true, name: 'Hemorragia' }, 'body', 'bleed'); return; } }
+    if (P.faintT > 0) { P.faintT -= dt; P.fall = Math.min(1, P.fall + dt * 2.2); P.vx *= 0.9; P.vz *= 0.9; P.adsT *= 0.8; if (P.faintT <= 0) P.hp = Math.max(P.hp, 12); return; }
     const wp = P.w[P.cur], spec = wp.spec;
     // entrada de movimento
     let fx_ = 0, fz_ = 0;
@@ -405,13 +415,13 @@
     P.trY = (Math.sin(tt * 7.3) * 0.55 + Math.sin(tt * 13.1 + 1) * 0.3 + Math.sin(tt * 23.7 + 2) * 0.15) * 0.013 * tn; P.trP = (Math.sin(tt * 6.1 + 0.5) * 0.5 + Math.sin(tt * 11.9 + 3) * 0.35 + Math.sin(tt * 19.3) * 0.15) * 0.011 * tn;
     const bobA = (0.035 + 0.04 * sprint) * mv * (1 - 0.85 * ads) * (1 + tn * 1.1), ph = P.bob;
     let ex = P.x + Math.cos(P.yaw) * Math.sin(ph) * bobA * 0.8, ez = P.z - Math.sin(P.yaw) * Math.sin(ph) * bobA * 0.8;
-    let ey = P.y + P.eyeY + (0.5 - 0.5 * Math.cos(2 * ph)) * bobA * 1.3 - Math.pow(Math.max(0, Math.cos(2 * ph)), 6) * bobA * 0.35 - (P.alive ? 0 : P.fall * (P.eyeY - 0.25)) + (G.time * 0.0);
+    let ey = P.y + P.eyeY + (0.5 - 0.5 * Math.cos(2 * ph)) * bobA * 1.3 - Math.pow(Math.max(0, Math.cos(2 * ph)), 6) * bobA * 0.35 - (P.fall * (P.eyeY - 0.25)) + (G.time * 0.0);
     ey += Math.sin(G.time * 1.3) * 0.004 * (1 - ads); // respiração
     if (G.shake > 0.01) { ex += (Math.random() - 0.5) * G.shake * 0.12; ey += (Math.random() - 0.5) * G.shake * 0.12; ez += (Math.random() - 0.5) * G.shake * 0.12; }
     const sk = tn * 0.012; ex += (Math.sin(tt * 17.1) + Math.sin(tt * 9.3)) * sk; ey += (Math.sin(tt * 14.7 + 1) + Math.sin(tt * 8.1)) * sk; ez += (Math.sin(tt * 15.3 + 2) + Math.sin(tt * 10.7)) * sk;
     camera.position.set(ex, ey, ez);
-    let pitch = P.pitch + Math.cos(2 * ph) * 0.007 * mv * (1 - ads) + P.rc.p - BC.clamp((P.stnVel || 0) * 0.06, -0.12, 0.12), yaw = P.yaw + P.rc.y, roll = Math.sin(ph) * 0.012 * mv * (1 - ads) + Math.sin(tt * 2.3) * 0.03 * tn + Math.sin(tt * 11) * 0.006 * tn + (P.alive ? 0 : P.fall * 0.9) + Math.sin(ph * 0.5) * 0.03 * P.prone * mv + (P.stnVel || 0) * 0.015;
-    if (!P.alive) pitch += P.fall * 0.5;
+    let pitch = P.pitch + Math.cos(2 * ph) * 0.007 * mv * (1 - ads) + P.rc.p - BC.clamp((P.stnVel || 0) * 0.06, -0.12, 0.12), yaw = P.yaw + P.rc.y, roll = Math.sin(ph) * 0.012 * mv * (1 - ads) + Math.sin(tt * 2.3) * 0.03 * tn + Math.sin(tt * 11) * 0.006 * tn + P.fall * 0.9 + Math.sin(ph * 0.5) * 0.03 * P.prone * mv + (P.stnVel || 0) * 0.015;
+    pitch += P.fall * 0.5;
     _e.set(BC.clamp(pitch, -1.5, 1.5), yaw, roll, 'YXZ'); camera.quaternion.setFromEuler(_e);
     // nascer/pôr do sol, sol segue o jogador (sombras)
     sun.position.set(P.x + sunDir.x * 90, P.y + sunDir.y * 90, P.z + sunDir.z * 90); sun.target.position.set(P.x, P.y, P.z); sun.target.updateMatrixWorld();
@@ -420,7 +430,7 @@
     // viewmodel
     const m = vm[P.cur]; if (!m) return;
     const scoped = wst.scoped && ads > 0.92;
-    vmGroup.visible = P.alive && !scoped; BC.UI.setScope(scoped && P.alive, wst.scopeType); BC.UI.setDot(wst.dot && ads > 0.8 && P.alive, wst.scopeType);
+    vmGroup.visible = P.alive && !(P.fall > 0.3) && !scoped; BC.UI.setScope(scoped && P.alive, wst.scopeType); BC.UI.setDot(wst.dot && ads > 0.8 && P.alive, wst.scopeType);
     if (m.scopeMesh) m.scopeMesh.visible = !(wst.dot && ads > 0.5);
     const hip = spec.hip, adp = [spec.ads[0], spec.ads[1] - (wst.scopeH && !wst.scoped ? wst.scopeH * 0.9 : 0), spec.ads[2]];
     let px = BC.lerp(hip[0], adp[0], ads), py = BC.lerp(hip[1], adp[1], ads), pz = BC.lerp(hip[2], adp[2], ads);
@@ -512,7 +522,7 @@
       if (!locked) { mouseL = mouseR = false; }
     });
     document.addEventListener('mousemove', (e) => {
-      if (!locked || !G.running) return; const P = G.player; if (!P.alive) return;
+      if (!locked || !G.running) return; const P = G.player; if (!P.alive || P.faintT > 0) return;
       const hipT = Math.tan(BC.rad(G.hipV || 60) / 2), curT = Math.tan(BC.rad(G.curFov || 60) / 2), ratio = curT / hipT;
       const sens = 0.0022 * G.settings.sens * ratio;
       P.yaw -= e.movementX * sens; P.pitch = BC.clamp(P.pitch - e.movementY * sens, -1.553, 1.553);
@@ -542,7 +552,7 @@
   G.renderFrame = function (dt) {
     if (!G.player) return;
     updateCamera(dt || 0.016);
-    post.render(scene, camera, vm.length ? vmScene : null, vmCam, { time: G.time, glitch: G.glitch + (G.player.alive ? 0 : 0.15) + Math.min(1.1, (G.blind || 0) * 0.4), damage: G.player.hitFlash * 0.5 + (G.player.hp < 30 ? (30 - G.player.hp) / 80 : 0), dead: G.player.alive ? 0 : BC.smooth(0, 1, G.player.fall) * 0.85, lg: G.lg, flash: G.flashScreen * 1.5 + Math.min(1.6, (G.blind || 0) * 0.55) });
+    post.render(scene, camera, vm.length ? vmScene : null, vmCam, { time: G.time, glitch: G.glitch + (G.player.alive ? 0 : 0.15) + Math.min(1.1, (G.blind || 0) * 0.4), damage: G.player.hitFlash * 0.5 + (G.player.hp < 30 ? (30 - G.player.hp) / 80 : 0), dead: BC.smooth(0, 1, G.player.fall) * 0.85, lg: G.lg, flash: G.flashScreen * 1.5 + Math.min(1.6, (G.blind || 0) * 0.55) });
     BC.UI.frame(dt || 0.016);
   };
   function loop(now) {

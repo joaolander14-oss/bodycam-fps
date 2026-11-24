@@ -2,7 +2,7 @@
 (function () {
   const T = THREE, BC = window.BC, G = BC.G;
   const M = BC.Modes = { list: [['tdm', 'Combate por equipes (abates)'], ['hill', 'Rei da Colina (segure a colina)'], ['dom', 'Captura de 3 pontos'], ['hunt', 'Caça aos animais']] };
-  let objs = [], animals = [], huntT = 0, huntTotal = 0, huntPts = 0, huntKills = 0;
+  let huntK = [0, 0], objs = [], animals = [], huntT = 0, huntTotal = 0, huntPts = 0, huntKills = 0;
   const COL = [0x4a90e8, 0xe8584a, 0xdddddd];
 
   M.clear = function () {
@@ -24,20 +24,20 @@
       }
       G.points = pts; G.score = [0, 0];
     } else if (mode === 'hunt') {
-      const ids = BC.animalList(G.settings.map), n = 22 + Math.round(H / 12); huntT = 480; huntPts = huntKills = 0; huntTotal = 0;
+      const ids = BC.animalList(G.settings.map), n = 28 + Math.round(H / 10); huntT = 480; huntPts = huntKills = 0; huntTotal = 0; huntK = [0, 0];
       for (let i = 0; i < n; i++) {
         const id = ids[i % ids.length], p = w.randomFree(Math.random, -H * 0.9, H * 0.9, -H * 0.8, H * 0.8, 1.2); if (!p) continue;
         if (Math.hypot(p.x - G.player.x, p.z - G.player.z) < 25 || (w.heightAt(p.x, p.z) < w.waterY + 0.1 && id !== 'croc')) continue;
         const a = new BC.Animal(G, id, p.x, p.z); animals.push(a); G.actors.push(a); huntTotal++;
       }
-      G.hunt = { total: huntTotal }; G.score = [0, 0];
+      G.hunt = { total: huntTotal, k: huntK }; G.score = [0, 0]; G.killLimit = 9999;
     }
   };
   function avg(l, k) { let s = 0; for (const e of l) s += e[k]; return l.length ? s / l.length : 0; }
 
   M.animalKilled = function (a, killer) {
-    if (!killer || !killer.isPlayer) return; huntKills++; huntPts += a.sp.pts; G.score[0] = huntPts;
-    BC.UI.msg('+' + a.sp.pts + '  ' + a.sp.n.toUpperCase(), 1.4);
+    if (!killer || killer.team === undefined || killer.team < 0 || !G.hunt) return; huntKills++; huntPts += a.sp.pts; huntK[killer.team]++; G.score[killer.team] += a.sp.pts;
+    if (killer.isPlayer) BC.UI.msg('+' + a.sp.pts + '  ' + a.sp.n.toUpperCase(), 1.4);
   };
   M.update = function (dt) {
     if (G.points) {
@@ -59,14 +59,14 @@
     if (G.hunt) {
       huntT -= dt; for (const a of animals) a.update(dt);
       G.hunt.left = Math.max(0, huntT); G.hunt.kills = huntKills; G.hunt.pts = huntPts;
-      if (!G.over && (huntT <= 0 || huntKills >= huntTotal)) { G.over = true; BC.UI.endHunt(huntKills, huntTotal, huntPts); }
+      if (!G.over && (huntT <= 0 || huntKills >= huntTotal)) { G.over = true; BC.UI.endHunt(G.score[G.player.team] > G.score[1 - G.player.team], G.score, huntK); }
     }
   };
   M.hudText = function () {
     if (G.points) {
       const P = G.player; return G.points.map((p) => { const c = p.owner < 0 ? '#ddd' : p.owner === 0 ? '#6fb0ff' : '#ff7a6a', d = Math.round(Math.hypot(p.x - P.x, p.z - P.z)); return `<span style="color:${c}">■ ${p.name}</span> <small>${d} m${Math.abs(p.c) > 0.05 && p.owner !== (p.c > 0 ? 0 : 1) ? ' ' + Math.round(Math.abs(p.c) * 100) + '%' : ''}</small>`; }).join('&nbsp;&nbsp;&nbsp;');
     }
-    if (G.hunt) return `ANIMAIS ${G.hunt.kills || 0}/${G.hunt.total}`;
+    if (G.hunt) { const l = Math.ceil(G.hunt.left || 0); return `CAÇA · ANIMAIS ${G.hunt.kills || 0}/${G.hunt.total} · ${Math.floor(l / 60)}:${String(l % 60).padStart(2, '0')}`; }
     return '';
   };
 })();
