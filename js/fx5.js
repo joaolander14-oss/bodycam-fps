@@ -45,6 +45,7 @@
   // impacto: partículas por calibre + furo conforme a superfície e a direção
   F.impact = function (pt, n, tag, big, spec, dirv) {
     if (tag === 'flesh' || tag === 'water' || !spec) return _imp.call(this, pt, n, tag, big);
+    if (n.nx !== undefined) n = { x: n.nx, y: n.ny, z: n.nz }; // fireCore passa a normal como {nx,ny,nz}
     const dmg = spec.dmg || 40, pel = spec.pellets > 1, k = BC.clamp(dmg / 130, 0.1, 1), col = (BC.SURF && BC.SURF[tag]) || 0x888888, up = n.y > 0.7;
     const size = pel ? 0.035 : 0.04 + 0.12 * k, hard = tag === 'metal' || tag === 'concrete' || tag === 'rock' || tag === 'brick';
     this.puff(pt.x + n.x * 0.05, pt.y + n.y * 0.05, pt.z + n.z * 0.05, col, pel ? 2 : 2 + Math.round(5 * k), 0.8 + 1.4 * k, 0.28 + 0.4 * k, 0.6);
