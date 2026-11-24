@@ -33,3 +33,7 @@ Poly Pizza (CC BY 3.0): "Poly by Google" — Camelo, Naja, Urso, Javali, Onça, 
 --- Modelos de armas adicionais (CC0) ---
 byzmod3d (OpenGameArt, CC0): Kar98k, Mauser C96. https://opengameart.org/node/187893
 3DModelsCC0 (via BoQsc/cc0-guns-explosives-pack-glb, CC0): AK-47, M4A1, Makarov. https://github.com/BoQsc/cc0-guns-explosives-pack-glb
+
+--- Sons de passos (gravações reais) ---
+CC0: "41 Snow shoe steps" (Corsica_S/qubodup); Owlish Media Sound Effects Pack; Kenney "50 RPG Sound Effects"; Fantozzi's Footsteps (Raassh); "Different steps on wood, stone, leaves, gravel and mud" (TinyWorlds); "9 wet snow steps" (qubodup); "Steps in wood floor" (mikeask); "Metal footsteps on concrete" (Thimras).
+CC BY 3.0: água — "Footsteps on different surfaces" por congusbongus (https://opengameart.org/content/footsteps-on-different-surfaces), derivado de "Water Footsteps" (EminYILDIRIM) e footstep-concrete (swuing); licença https://creativecommons.org/licenses/by/3.0/
