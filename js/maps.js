@@ -62,7 +62,8 @@
       const s = smin + rng() * (smax - smin), v = 0.72 + rng() * 0.28;
       const c = new T.Color(tint || 0x8a8b88).multiplyScalar(v);
       list.push({ x, y: y + s * 0.15, z, ry: rng() * 6, s, c: c.getHex() });
-      W.addCylCol(x, z, s * 0.95, y - 0.1, y + Math.max(0.95, s * 0.85), 'rock');
+      let lo = y, hi = y; for (let q = 0; q < 8; q++) { const hq = W.heightAt(x + Math.cos(q * 0.7854) * s, z + Math.sin(q * 0.7854) * s); if (hq < lo) lo = hq; if (hq > hi) hi = hq; }
+      W.addCylCol(x, z, s * 0.95, lo - 0.3, Math.max(hi + 0.8, y + Math.max(0.95, s * 0.85)), 'rock');
     }
     W.instanced(geo, vmat, list);
   }

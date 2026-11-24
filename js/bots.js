@@ -15,6 +15,7 @@
     };
     if (ok(nx, nz)) { a.x = nx; a.z = nz; } else if (ok(nx, a.z)) { a.x = nx; a.vz = 0; } else if (ok(a.x, nz)) { a.z = nz; a.vx = 0; } else { a.vx = 0; a.vz = 0; }
     const p = { x: a.x, z: a.z }; world.pushOut(p, a.r, a.y, a.h, STEP); a.x = p.x; a.z = p.z;
+    if (world.embedded && world.embedded(a)) world.unstick(a);
     const L = world.play; a.x = BC.clamp(a.x, -L, L); a.z = BC.clamp(a.z, -L, L);
     const g = world.groundAt(a.x, a.z, a.y, STEP); a.landed = 0;
     if (a.onGround) {

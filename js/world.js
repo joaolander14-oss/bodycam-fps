@@ -162,6 +162,25 @@
     }
     return h;
   };
+  // o centro do ator está dentro de um colisor sólido (rocha, parede, prédio…)?
+  W.embedded = function (a) {
+    const c = this.cells[Math.floor((a.z + this.half) / CS) * this.gw + Math.floor((a.x + this.half) / CS)]; if (!c) return false;
+    const th = this.heightAt(a.x, a.z), ya = Math.max(a.y, th - 0.5), y0 = ya + 0.25, y1 = ya + (a.h || 1.7) - 0.1;
+    for (const o of c) {
+      if (o.y1 <= y0 || o.y0 >= y1) continue;
+      if (o.k === 'b') { if (a.x > o.x0 + 0.05 && a.x < o.x1 - 0.05 && a.z > o.z0 + 0.05 && a.z < o.z1 - 0.05) return true; }
+      else { const dx = a.x - o.x, dz = a.z - o.z; if (dx * dx + dz * dz < o.r * o.r * 0.7) return true; }
+    }
+    return false;
+  };
+  // tira um ator que ficou preso dentro de um colisor: leva ao ponto livre mais próximo
+  W.unstick = function (a) {
+    for (let r = 0.6; r <= 7; r += 0.6) for (let k = 0; k < 20; k++) {
+      const ang = k * 0.31416 + r, x = a.x + Math.cos(ang) * r, z = a.z + Math.sin(ang) * r;
+      const th = this.heightAt(x, z); if (this.isFree(x, z, a.r + 0.05) && !this.embedded({ x, z, y: th, h: a.h, r: a.r })) { a.x = x; a.z = z; a.y = Math.max(th, this.groundAt(x, z, th + 0.3, 0.6)); a.vx = a.vz = 0; a.vy = 0; a.onGround = true; return true; }
+    }
+    return false;
+  };
   // empurra um círculo (raio r) para fora dos colisores. Retorna true se tocou algo.
   W.pushOut = function (p, r, feetY, hgt, step) {
     let hit = false;
