@@ -778,7 +778,7 @@
   BC.MAP_SIZES = { pequeno: 110, medio: 160, grande: 220, enorme: 280 };
   BC.buildMap = function (id, size) {
     const H = BC.MAP_SIZES[size] || BC.MAP_SIZES.grande; S.H = H; S.K = H / 78; S.A = S.K * S.K * 0.7;
-    const def = BC.maps[id], W = new BC.World(H + 32); W.play = H;
+    const def = BC.maps[id], W = new BC.World(H + 32); W.play = H; W.mapId = id;
     const rng = BC.rng(def.seed);
     def.build(W, rng); W.finalize(); W.def = def; return W;
   };

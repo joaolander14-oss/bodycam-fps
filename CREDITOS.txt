@@ -44,3 +44,6 @@ CC BY 4.0: "Metal Click" por Mobeyee Sounds — https://opengameart.org/content/
 
 --- Modelos 3D das miras (CC0) ---
 Pichuliru (Poly Pizza, CC0): Red Dot, Reflex, Holographic, Magnified (ACOG), Scope. https://poly.pizza (ids S9sDv7SZRm, WYL5bcaqr5, NvuLseKLaD, UHEJDoCrcf, 11AYWUakkH, fIEM6qRfSt, 1QxV2Mk5l4, 98ocxnqLFf)
+
+--- Texturas fotográficas (CC0) ---
+ambientCG (https://ambientcg.com, CC0): Ground037, Grass004, Ground102, Ground048, Ground054, Ground080, Ground097, Snow006, Snow013, Ground109, Gravel043, Gravel041, Rock064, Rock051, Rock029, Asphalt033, Concrete049, Concrete048, Bricks097, PaintedPlaster017, Planks040, Wood051, Planks037A, DiamondPlate009, Metal064, RoofingTiles014A, CorrugatedSteel009, Fabric066, Rock030, Rock035, Moss001, ScatteredLeaves009.

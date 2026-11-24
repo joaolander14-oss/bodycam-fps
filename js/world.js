@@ -5,8 +5,16 @@
 
   // ---------- materiais ----------
   const texCache = {};
+  // texturas fotográficas (CC0) para materiais de construção; o que não tiver foto usa a textura procedural
+  const PHOTO = { concrete: 'concrete', brick: 'brick', plaster: 'plaster', wood: 'wood_planks', log: 'wood_dark', metal: 'container_metal', rust: 'metal_rust', sand: 'sand', adobe: 'plaster', rock: 'rock', sandbag: 'fabric', roof: 'roof_tiles' };
+  const photoCache = {};
+  BC.photo = function (file) {
+    if (photoCache[file]) return photoCache[file];
+    const t = new T.TextureLoader().load('tex/' + file + '.jpg'); t.wrapS = t.wrapT = T.RepeatWrapping; t.anisotropy = 4; photoCache[file] = t; return t;
+  };
   BC.tex = function (name) {
     if (texCache[name]) return texCache[name];
+    if (PHOTO[name]) { texCache[name] = BC.photo(PHOTO[name]); return texCache[name]; }
     let t;
     const sp = BC.speckle;
     switch (name) {
@@ -141,7 +149,26 @@
     geo.setAttribute('color', new T.BufferAttribute(col, 3));
     const uv = geo.attributes.uv; for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * 70 * (half / 110), uv.getY(i) * 70 * (half / 110));
     geo.computeVertexNormals();
-    const mesh = new T.Mesh(geo, new T.MeshLambertMaterial({ vertexColors: true, map: BC.tex('ground') }));
+    // textura do terreno: foto principal no plano + foto secundária nas encostas e em manchas
+    const TS = { snow: ['snow', 'rock'], grass: ['grass2', 'dirt'], mud: ['mud', 'dirt2'], concrete: ['concrete_rough', 'gravel'], sand: ['sand', 'rock'], rock: ['rock', 'gravel'], dirt: ['dirt', 'rock'] };
+    const TM = { forest: ['grass2', 'leaves'], jungle: ['moss', 'dirt'], swamp: ['mud', 'moss'], trench: ['mud', 'dirt2'], village: ['grass_dry', 'dirt'], farm: ['grass2', 'grass_dry'], canyon: ['dirt2', 'rock_red'], volcano: ['ash', 'ash2'], oilfield: ['dirt2', 'gravel'], pit: ['gravel2', 'rock'], harbor: ['asphalt', 'gravel'], castle: ['grass2', 'rock'], ruins: ['moss', 'rock2'], mountain: ['rock', 'snow2'], desert: ['sand', 'rock_red'], coast: ['sand', 'grass2'], airbase: ['concrete_rough', 'grass_dry'], industrial: ['concrete_rough', 'gravel2'], city: ['asphalt', 'concrete_rough'], snow: ['snow', 'snow2'] };
+    const pair = TM[this.mapId] || TS[this.surf] || TS.dirt, tA = BC.photo(pair[0]), tB = BC.photo(pair[1]), mixv = new Float32Array(pos.count);
+    for (let j = 0; j <= N; j++) for (let i = 0; i <= N; i++) {
+      const k = j * (N + 1) + i, x = -half + i * this.cell, z = -half + j * this.cell;
+      const hx = H[j * (N + 1) + Math.min(N, i + 1)] - H[j * (N + 1) + Math.max(0, i - 1)], hz = H[Math.min(N, j + 1) * (N + 1) + i] - H[Math.max(0, j - 1) * (N + 1) + i], sl = Math.sqrt(hx * hx + hz * hz) / (2 * this.cell);
+      let m = BC.smooth(0.28, 0.62, sl) + 0.55 * (BC.fbm(x * 0.035, z * 0.035, 17) - 0.45) * 1.6; mixv[k] = Math.min(1, Math.max(0, m));
+      // a cor por vértice só dá um tom leve por cima da foto
+      for (let q = 0; q < 3; q++) col[k * 3 + q] = 1 + (col[k * 3 + q] - 1) * 0.6;
+    }
+    geo.setAttribute('color', new T.BufferAttribute(col, 3)); geo.setAttribute('mixv', new T.BufferAttribute(mixv, 1));
+    const tmat = new T.MeshLambertMaterial({ vertexColors: true, map: tA });
+    tmat.onBeforeCompile = (sh) => {
+      sh.uniforms.map2 = { value: tB };
+      sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nattribute float mixv; varying float vMix;').replace('#include <begin_vertex>', '#include <begin_vertex>\nvMix = mixv;');
+      sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nuniform sampler2D map2; varying float vMix;').replace('#include <map_fragment>',
+        '#ifdef USE_MAP\n vec4 ta = mix(texture2D(map, vUv), texture2D(map, vUv * 0.137 + 0.5), 0.38); vec4 tb = mix(texture2D(map2, vUv * 0.8 + 0.31), texture2D(map2, vUv * 0.113), 0.38); diffuseColor *= mix(ta, tb, vMix);\n#endif');
+    };
+    const mesh = new T.Mesh(geo, tmat);
     mesh.receiveShadow = true; this.group.add(mesh); this.terrain = mesh;
   };
   W.heightAt = function (x, z) {
