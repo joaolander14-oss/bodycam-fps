@@ -168,14 +168,16 @@
     if (h) { tW = h.t; hp = { nx: h.nx, ny: h.ny, nz: h.nz, tag: h.tag }; }
     let best = null, bz = null, bt = tW;
     for (const e of G.actors) {
-      if (e === shooter || !e.alive || e.inVeh || e === shooter.inVeh || (G.hunt && !e.isAnimal)) continue; // fogo amigo ligado
+      if (e === shooter || (!e.alive && !(e.model && e.death && !e.isPlayer && !e.isAnimal && !e.isDrone && !e.isVehicle && e.deadT < 14 && e.model.root.visible)) || e.inVeh || e === shooter.inVeh || (G.hunt && !e.isAnimal)) continue; // fogo amigo ligado
       const r = BC.hitActor(e, o.x, o.y, o.z, d.x, d.y, d.z, bt); if (r && r.t < bt) { bt = r.t; best = e; bz = r.zone; }
     }
     const px = o.x + d.x * bt, py = o.y + d.y * bt, pz = o.z + d.z * bt;
-    if (best) {
+    if (best && !best.alive) { // corpo: a bala para nele, espirra um pouco de sangue e não causa dano
+      fx.blood({ x: px, y: py, z: pz }, d, bz, w, Math.min(spec.dmg * 0.45, 70));
+    } else if (best) {
       const mul = bz === 'head' ? spec.headMul : bz === 'legs' ? spec.legMul : 1;
       let dmg = spec.dmg * mul * BC.falloff(spec, bt) * scale;
-      const reg = (best.isAnimal || best.isVehicle || best.isDrone) ? null : BC.Anatomy.hit(best, px, py, pz, bz, spec);
+      const reg = (best.isAnimal || best.isVehicle || best.isDrone || (best.faintT > 0 && best.model && best.death)) ? null : BC.Anatomy.hit(best, px, py, pz, bz, spec);
       if (reg) { dmg = spec.dmg * reg.mul * BC.falloff(spec, bt) * scale; if (reg.kill) dmg = Math.max(dmg, 999); reg.pw = BC.clamp(spec.dmg * scale / 55, 0.5, 2.4); if (shooter.isPlayer) G.lastRegion = reg.n; }
       if (best.isVehicle || best.isDrone) fx.impact({ x: px, y: py, z: pz }, { nx: -d.x, ny: -d.y, nz: -d.z, tag: 'metal' }, 'metal', false); else fx.blood({ x: px, y: py, z: pz }, d, bz, w, Math.min(dmg, 160));
       let killed = false;

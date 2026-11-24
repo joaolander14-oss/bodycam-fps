@@ -30,7 +30,18 @@
   };
 
   // hitbox: retorna {t,zone} do mesmo raio contra um ator (cabeça esfera, tronco e pernas cilindros)
+  // caído/morto: esferas presas aos ossos do modelo (seguem exatamente a pose animada da queda)
+  const _dp = new T.Vector3();
+  const PARTS = [['head', 'head', 0, 0, 0, 0.16, 'head'], ['up', 'up', 0, 0.26, 0, 0.27, 'body'], ['up', 'up', 0, -0.06, 0, 0.23, 'body'], ['legL', 'legL', 0, -0.2, 0, 0.14, 'legs'], ['legR', 'legR', 0, -0.2, 0, 0.14, 'legs'], ['kneeL', 'kneeL', 0, -0.02, 0, 0.12, 'legs'], ['kneeR', 'kneeR', 0, -0.02, 0, 0.12, 'legs'], ['kneeL', 'kneeL', 0, -0.32, 0, 0.11, 'legs'], ['kneeR', 'kneeR', 0, -0.32, 0, 0.11, 'legs']];
+  BC.hitDowned = function (a, ox, oy, oz, dx, dy, dz, maxT) {
+    const m = a.model, r = m.root, sc = r.scale.y || 1;
+    if (BC.raySphere(ox, oy, oz, dx, dy, dz, r.position.x, r.position.y + 0.35, r.position.z, 1.5 * sc, maxT) < 0 && Math.hypot(ox - r.position.x, oy - r.position.y - 0.35, oz - r.position.z) > 1.5 * sc) return null;
+    r.updateMatrixWorld(true); let bt = Infinity, zone = null;
+    for (const p of PARTS) { const o = m[p[1]]; if (!o) continue; _dp.set(p[2], p[3], p[4]); o.localToWorld(_dp); const t = BC.raySphere(ox, oy, oz, dx, dy, dz, _dp.x, _dp.y, _dp.z, p[5] * sc, maxT); if (t > 0 && t < bt) { bt = t; zone = p[6]; } }
+    return zone ? { t: bt, zone } : null;
+  };
   BC.hitActor = function (a, ox, oy, oz, dx, dy, dz, maxT) {
+    if (a.model && a.death && (!a.alive || a.faintT > 0)) return BC.hitDowned(a, ox, oy, oz, dx, dy, dz, maxT);
     if ((a.stn || 0) > 1.5) { // deitado: esferas ao longo do corpo
       const fx = -Math.sin(a.yaw), fz = -Math.cos(a.yaw), x = a.x, y = a.y, z = a.z;
       let t = BC.raySphere(ox, oy, oz, dx, dy, dz, x + fx * 0.62, y + 0.2, z + fz * 0.62, 0.15, maxT); if (t > 0) return { t, zone: 'head' };
@@ -112,7 +123,7 @@
       this.faintT = 0; this.alive = false; this.deadT = 0; this.deaths++; this.respawnT = 6 + rng() * 2; G.fx.pool(this.x, this.y, this.z, amount); G.onKill(from, this, wid, head); return;
     }
     if (faintOnly) { this.faintT = faintOnly; this.target = null; this.cover = null; this.deadT = 0; }
-    else { this.alive = false; this.deadT = 0; this.deaths++; this.respawnT = 6 + rng() * 2; G.fx.pool(this.x, this.y, this.z, amount); }
+    else { this.alive = false; this.deadT = 0; this.deaths++; this.respawnT = 6 + rng() * 2; }
     let dx = dir ? dir.x : -Math.sin(this.yaw) * -1, dz = dir ? dir.z : -Math.cos(this.yaw) * -1; const l = Math.hypot(dx, dz) || 1; dx /= l; dz /= l;
     const dist = from ? Math.hypot(from.x - this.x, from.z - this.z) : 30;
     // força do impacto: depende do calibre (energia ≈ dano × √velocidade) e, nas espingardas, da distância
@@ -214,7 +225,8 @@
       this.deadT += dt; const m = this.model, d = this.death;
       if (this.bleed && this.bleed.length && this.deadT < 5) G.fx.bleedTick(this, dt);
       if (m && d) {
-        d.t += dt; const u = Math.min(1, d.t / d.dur), e = u * u * (3 - 2 * u), TT = new T.Quaternion(), YY = new T.Quaternion().setFromAxisAngle(new T.Vector3(0, 1, 0), this.yaw);
+        d.t += dt; if (!this.alive && !d.pooled && d.t > 0.9) { d.pooled = 1; G.fx.pool(m.root.position.x, this.y, m.root.position.z, 70 + d.F * 25); }
+        const u = Math.min(1, d.t / d.dur), e = u * u * (3 - 2 * u), TT = new T.Quaternion(), YY = new T.Quaternion().setFromAxisAngle(new T.Vector3(0, 1, 0), this.yaw);
         const delay = (d.type === 'crumple' || d.type === 'slump' || d.type === 'headdrop' || d.type === 'legs') ? 0.28 : d.type === 'back' ? 0.18 : 0, uf = Math.max(0, Math.min(1, (d.t - delay) / Math.max(0.2, d.dur - delay))), ef = Math.pow(uf, 1.6) * (3 - 2 * uf);
         // empurrão do impacto (desacelera) e salto da explosão
         const kv = d.kn * Math.exp(-3.2 * d.t); const nx = this.x + d.fx * 0.0 + d.dx * kv * dt * (d.type === 'crumple' || d.type === 'slump' || d.type === 'headdrop' ? 0.2 : 1), nz = this.z + d.dz * kv * dt * (d.type === 'crumple' || d.type === 'slump' || d.type === 'headdrop' ? 0.2 : 1);
