@@ -86,7 +86,7 @@
   B.throwGren = function (tx, tz, ty) {
     const G = this.G, rng = G.rng, p = new T.Vector3(this.x - Math.sin(this.yaw) * 0.5, this.y + 1.5 - this.crouch * 0.4, this.z - Math.cos(this.yaw) * 0.5);
     const v = BC.Gren.solve(p, tx + (rng() - 0.5) * 5, tz + (rng() - 0.5) * 5, ty || 0); v.multiplyScalar(0.96 + rng() * 0.08);
-    BC.Gren.throwG(this, this.gren, p, v); this.gren = null; this.grenT = 999; BC.Audio.metal(0.3, 2200);
+    BC.Gren.throwG(this, this.gren, p, v); this.gren = null; this.grenT = 999; BC.Audio.gren('throw', Math.hypot(G.player.x - this.x, G.player.z - this.z), G.panTo(this.x, this.z), 0.7);
   };
   B.eyeH = function () { return 1.5 - 0.5 * this.crouch - 1.15 * this.prone; };
   B.hear = function (x, z, strong) {

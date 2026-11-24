@@ -69,7 +69,7 @@
             g.p.x += dx * Math.max(0, h.t - 0.035); g.p.y += dy * Math.max(0, h.t - 0.035); g.p.z += dz * Math.max(0, h.t - 0.035);
             const nx = h.nx, ny = h.ny, nz = h.nz, vn = g.v.x * nx + g.v.y * ny + g.v.z * nz; const e = 0.4;
             g.v.x -= (1 + e) * vn * nx; g.v.y -= (1 + e) * vn * ny; g.v.z -= (1 + e) * vn * nz; const f = ny > 0.5 ? 0.72 : 0.9; g.v.x *= f; g.v.z *= f;
-            if (Math.abs(vn) > 2.5) BC.Audio.metal(0.35, 900 + Math.random() * 500);
+            if (Math.abs(vn) > 2.5) BC.Audio.gren('bounce', Math.hypot(G.player.x - g.p.x, G.player.z - g.p.z), G.panTo(g.p.x, g.p.z), 0.7);
             if (ny > 0.6 && g.v.length() < 1.6) { g.rest = true; g.v.set(0, 0, 0); }
             if (h.tag === 'water') { g.rest = true; g.v.set(0, 0, 0); }
           } else { g.p.x += g.v.x * dt; g.p.y += g.v.y * dt; g.p.z += g.v.z * dt; }

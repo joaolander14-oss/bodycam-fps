@@ -37,3 +37,7 @@ byzmod3d (OpenGameArt, CC0): Kar98k, Mauser C96. https://opengameart.org/node/18
 --- Sons de passos (gravações reais) ---
 CC0: "41 Snow shoe steps" (Corsica_S/qubodup); Owlish Media Sound Effects Pack; Kenney "50 RPG Sound Effects"; Fantozzi's Footsteps (Raassh); "Different steps on wood, stone, leaves, gravel and mud" (TinyWorlds); "9 wet snow steps" (qubodup); "Steps in wood floor" (mikeask); "Metal footsteps on concrete" (Thimras).
 CC BY 3.0: água — "Footsteps on different surfaces" por congusbongus (https://opengameart.org/content/footsteps-on-different-surfaces), derivado de "Water Footsteps" (EminYILDIRIM) e footstep-concrete (swuing); licença https://creativecommons.org/licenses/by/3.0/
+
+--- Sons de granadas (gravações reais, OpenGameArt) ---
+CC0: 100-cc0-sfx e 75-cc0-breaking-falling-hit-sfx e 25-cc0-bang-firework-sfx (rubberduck); mechanical-sounds e metal-impact-sounds (bmaczero); scrapes (antumdeluge); swishes-sound-pack (artisticdude); air-whoosh (pyranostudios); steam-release-sounds (bart); compressed-gas-leak-sfx (0new4y); explosion (tinyworlds); mechanical-explosion (spring-spring); explosions-4 (ezduzziteh); muffled-distant-explosion (nenadsimic); flash-bang-sound (teeeece).
+CC BY 4.0: "Metal Click" por Mobeyee Sounds — https://opengameart.org/content/metal-click

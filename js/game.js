@@ -365,9 +365,9 @@
     P.hitFlash = Math.max(0, P.hitFlash - dt * 2.5);
     // mirar (ADS)
     if (P.thr) {
-      const th = P.thr; th.t += dt; if (!th.pin && th.t > 0.12) { th.pin = 1; BC.Audio.metal(0.5, 2400); }
+      const th = P.thr; th.t += dt; if (!th.pin && th.t > 0.12) { th.pin = 1; BC.Audio.gren('spoon', 0, 0, 0.9); }
       if (!th.rel && th.t > 0.5) {
-        th.rel = 1; const b = camBasis(), o = eyePos(), hh = G.world.raycast(o.x, o.y, o.z, b.f.x, b.f.y, b.f.z, 0.7), dd = hh ? Math.max(0.05, hh.t - 0.12) : 0.55, v = new T.Vector3(b.f.x * 17 + P.vx * 0.8, b.f.y * 17 + 4.2 + (b.f.y > 0 ? 0 : 0), b.f.z * 17 + P.vz * 0.8);
+        th.rel = 1; BC.Audio.gren('throw', 0, 0, 0.9); const b = camBasis(), o = eyePos(), hh = G.world.raycast(o.x, o.y, o.z, b.f.x, b.f.y, b.f.z, 0.7), dd = hh ? Math.max(0.05, hh.t - 0.12) : 0.55, v = new T.Vector3(b.f.x * 17 + P.vx * 0.8, b.f.y * 17 + 4.2 + (b.f.y > 0 ? 0 : 0), b.f.z * 17 + P.vz * 0.8);
         BC.Gren.throwG(P, th.type, new T.Vector3(o.x + b.f.x * dd - b.u.x * 0.1 + b.r.x * 0.12, o.y + b.f.y * dd - b.u.y * 0.1, o.z + b.f.z * dd - b.u.z * 0.1 + b.r.z * 0.12), v); P.gren[th.type]--; if (P.gren[P.grSel] <= 0) { const nx = Object.keys(P.gren).find((k) => P.gren[k] > 0); if (nx) P.grSel = nx; }
       }
       if (th.t > 0.95) P.thr = null;
@@ -533,7 +533,7 @@
       if (e.code === 'KeyE' && P.alive && BC.Vehicles) BC.Vehicles.useKey();
       if (e.code === 'KeyV' && P.alive && !(P.faintT > 0) && !P.heal && P.kit && P.kit.band > 0 && (P.bld > 0.01 || P.hp < 100)) { P.kit.band--; P.heal = { type: 'band', t: 0, dur: 2.4 }; BC.Audio.cloth && BC.Audio.cloth(0.8); }
       if (e.code === 'KeyX' && P.alive && !(P.faintT > 0) && !P.heal && P.kit && P.kit.med > 0 && (P.bld > 0.01 || P.hp < 100)) { P.kit.med--; P.heal = { type: 'med', t: 0, dur: 5 }; BC.Audio.cloth && BC.Audio.cloth(0.8); }
-      if (e.code === 'KeyG' && P.alive && !P.thr && P.swapT <= 0 && P.gren[P.grSel] > 0) { P.thr = { t: 0, type: P.grSel }; P.rl = null; aimTog = false; BC.Audio.click(0.3); }
+      if (e.code === 'KeyG' && P.alive && !P.thr && P.swapT <= 0 && P.gren[P.grSel] > 0) { P.thr = { t: 0, type: P.grSel }; P.rl = null; aimTog = false; BC.Audio.gren('pin', 0, 0, 0.8); }
       if (e.code === 'KeyH' && P.alive) { const ks = Object.keys(P.gren).filter((k) => P.gren[k] > 0); if (ks.length) { P.grSel = ks[(ks.indexOf(P.grSel) + 1) % ks.length]; BC.Audio.click(0.2); } }
       if (e.code === 'Space') e.preventDefault();
     });
