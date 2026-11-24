@@ -39,9 +39,17 @@
     $('oFov').value = S.fov; $('oSens').value = Math.round(S.sens * 100); $('oVol').value = Math.round(S.vol * 100); $('oDot').checked = S.dot;
     const sync = () => { $('vFov').textContent = $('oFov').value; $('vSens').textContent = ($('oSens').value / 100).toFixed(2); $('vVol').textContent = $('oVol').value; };
     sync();
+    { // horário do dia: predefinições + controle livre (0-24 h)
+      const HORAS = [['map', 'Padrão do mapa'], ['0', 'Meia-noite'], ['4', 'Madrugada'], ['6', 'Amanhecer'], ['9', 'Manhã'], ['12', 'Meio-dia'], ['15', 'Tarde'], ['18', 'Entardecer'], ['20', 'Anoitecer'], ['22', 'Noite'], ['custom', 'Personalizado']];
+      for (const [k, n] of HORAS) { const o = document.createElement('option'); o.value = k; o.textContent = n; $('oHora').appendChild(o); }
+      const hv = S.hora === undefined || S.hora === 'map' ? 'map' : String(S.hora), known = HORAS.some((q) => q[0] === hv);
+      $('oHora').value = known ? hv : 'custom'; if (hv !== 'map') $('oHoraV').value = +hv; $('vHora').textContent = BC.hourName(+$('oHoraV').value); $('oHoraV').disabled = $('oHora').value === 'map';
+      $('oHora').addEventListener('change', () => { const v = $('oHora').value; $('oHoraV').disabled = v === 'map'; if (v !== 'map' && v !== 'custom') $('oHoraV').value = +v; $('vHora').textContent = BC.hourName(+$('oHoraV').value); });
+      $('oHoraV').addEventListener('input', () => { $('oHora').value = 'custom'; $('vHora').textContent = BC.hourName(+$('oHoraV').value); });
+    }
     ['oFov', 'oSens', 'oVol'].forEach((id) => $(id).addEventListener('input', sync));
     const collect = UI.collect = () => {
-      S.mode = $('oMode').value; S.vehicles = $('oVeh').value; S.diff = $('oDiff').value; S.farda = $('oFarda').value; S.fardaE = $('oFardaE').value; S.size = +$('oSize').value; S.mapSize = $('oMapSize').value; S.quality = $('oQual').value; S.fov = +$('oFov').value; S.sens = $('oSens').value / 100; S.vol = $('oVol').value / 100; S.enemy = +$('oEnemy').value; if (S.enemy === S.skin) S.enemy = (S.skin + 1) % BC.TEAMS.length;
+      S.mode = $('oMode').value; S.vehicles = $('oVeh').value; S.diff = $('oDiff').value; S.hora = $('oHora').value === 'map' ? 'map' : +$('oHoraV').value; S.farda = $('oFarda').value; S.fardaE = $('oFardaE').value; S.size = +$('oSize').value; S.mapSize = $('oMapSize').value; S.quality = $('oQual').value; S.fov = +$('oFov').value; S.sens = $('oSens').value / 100; S.vol = $('oVol').value / 100; S.enemy = +$('oEnemy').value; if (S.enemy === S.skin) S.enemy = (S.skin + 1) % BC.TEAMS.length;
     };
     $('play').onclick = () => {
       if (BC.MP) BC.MP.leave(); collect();

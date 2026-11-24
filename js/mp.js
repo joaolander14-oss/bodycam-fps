@@ -280,7 +280,7 @@
     if (MP.playing) MP.players[i].gone = true; else { MP.players.splice(i, 1); MP.players.forEach((p, k) => { if (p.conn) { p.conn._id = k; sendTo(p.conn, { t: 'welcome', id: k }); } }); }
     lobbyChanged();
   }
-  const CFGK = ['map', 'mapSize', 'size', 'skin', 'enemy', 'farda', 'fardaE', 'diff', 'mode'];
+  const CFGK = ['map', 'mapSize', 'size', 'skin', 'enemy', 'farda', 'fardaE', 'diff', 'mode', 'hora'];
   MP.hostBegin = function () {
     if (MP.role !== 'host') return;
     if (MP.players.length < 2 && !confirm('Ninguém entrou na sala ainda. Iniciar mesmo assim (só com bots)?')) { el('menu').classList.remove('hidden'); return false; }

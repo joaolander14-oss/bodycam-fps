@@ -27,18 +27,19 @@
     scene = G.scene = new T.Scene(); camera = G.camera = new T.PerspectiveCamera(70, 1.78, 0.03, 700); scene.add(camera);
     vmScene = new T.Scene(); vmCam = new T.PerspectiveCamera(58, 1.78, 0.01, 10); vmScene.add(vmCam);
     vmGroup = new T.Group(); vmCam.add(vmGroup);
-    const vh = new T.HemisphereLight(0xffffff, 0x777788, 0.9); const vd = new T.DirectionalLight(0xffffff, 0.8); vd.position.set(0.5, 1, 0.8);
+    const vh = new T.HemisphereLight(0xffffff, 0x777788, 0.9); const vd = new T.DirectionalLight(0xffffff, 0.8); vd.position.set(0.5, 1, 0.8); G.vmL = [vh, vd];
     vmScene.add(vh, vd);
     hemi = new T.HemisphereLight(0xffffff, 0x888888, 0.9); scene.add(hemi);
     sun = new T.DirectionalLight(0xffffff, 0.9); sun.castShadow = true; scene.add(sun, sun.target);
     muzzleLight = new T.PointLight(0xffc070, 0, 16); scene.add(muzzleLight);
+    G.flash = new T.SpotLight(0xfff2dc, 0, 70, 0.34, 0.55, 1.3); scene.add(G.flash, G.flash.target); G.flashOn = false;
     const sc = sun.shadow.camera; sc.left = sc.bottom = -42; sc.right = sc.top = 42; sc.near = 1; sc.far = 220; sun.shadow.bias = -0.0006;
     // céu
     sky = new T.Mesh(new T.SphereGeometry(450, 24, 14), new T.ShaderMaterial({
       side: T.BackSide, depthWrite: false, fog: false,
-      uniforms: { top: { value: new T.Color(0x88aacc) }, hor: { value: new T.Color(0xcccccc) }, sunDir: { value: sunDir }, sunCol: { value: new T.Color(0xffffff) } },
+      uniforms: { top: { value: new T.Color(0x88aacc) }, hor: { value: new T.Color(0xcccccc) }, sunDir: { value: sunDir }, sunCol: { value: new T.Color(0xffffff) }, night: { value: 0 } },
       vertexShader: 'varying vec3 vp; void main(){ vp=normalize(position); gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }',
-      fragmentShader: 'uniform vec3 top,hor,sunCol,sunDir; varying vec3 vp; void main(){ float h=clamp(vp.y,0.0,1.0); vec3 c=mix(hor,top,pow(h,0.55)); float s=max(dot(normalize(vp),normalize(sunDir)),0.0); c+=sunCol*(pow(s,600.0)*1.6+pow(s,8.0)*0.12); gl_FragColor=vec4(c,1.0); }'
+      fragmentShader: 'uniform vec3 top,hor,sunCol,sunDir; uniform float night; varying vec3 vp; void main(){ float h=clamp(vp.y,0.0,1.0); vec3 c=mix(hor,top,pow(h,0.55)); float s=max(dot(normalize(vp),normalize(sunDir)),0.0); c+=sunCol*(pow(s,600.0)*1.6+pow(s,8.0)*0.12); vec3 q=floor(normalize(vp)*210.0); float st=step(0.9965,fract(sin(dot(q,vec3(12.9898,78.233,37.719)))*43758.5453)); c+=vec3(st)*night*smoothstep(0.02,0.35,vp.y)*0.9; gl_FragColor=vec4(c,1.0); }'
     }));
     sky.renderOrder = -10; sky.frustumCulled = false; scene.add(sky);
     post = G.post = new BC.Post(renderer); BC.Optics.init(renderer); fx = G.fx = new BC.Fx(scene); BC.Gren.init(scene);
@@ -93,6 +94,7 @@
     hemi.color.setHex(def.hemi.sky); hemi.groundColor.setHex(def.hemi.ground); hemi.intensity = def.hemi.i;
     sun.color.setHex(def.sun.color); sun.intensity = def.sun.i; sunDir.set(def.sun.dir[0], def.sun.dir[1], def.sun.dir[2]).normalize();
     sky.material.uniforms.top.value.setHex(def.sky.top); sky.material.uniforms.hor.value.setHex(def.sky.horizon); sky.material.uniforms.sunCol.value.setHex(def.sun.color);
+    if (BC.applyTime) BC.applyTime({ scene, hemi, sun, sky, sunDir, vmL: G.vmL }, def, S.hora);
     fx.setWeather(def.weather);
     // jogador
     if (!G.vmGren) { G.vmGren = {}; for (const k in BC.GREN) { const gm = BC.grenMesh(k); gm.visible = false; vmGroup.add(gm); G.vmGren[k] = gm; } }
@@ -384,7 +386,7 @@
       }
       if (th.t > 0.95) P.thr = null;
     }
-    const wantAds = aiming && !sprinting && !P.rl && P.swapT <= 0 && !P.thr;
+    const wantAds = aiming && !sprinting && !P.rl && P.swapT <= 0 && !P.thr && !(vmState.clip > 0.55);
     const adsRate = spec.scope ? 6 : 10;
     P.adsT += ((wantAds ? 1 : 0) - P.adsT) * Math.min(1, adsRate * dt);
     // recuo decai
@@ -454,7 +456,7 @@
     if (G.shake > 0.01) { ex += (Math.random() - 0.5) * G.shake * 0.12; ey += (Math.random() - 0.5) * G.shake * 0.12; ez += (Math.random() - 0.5) * G.shake * 0.12; }
     const sk = tn * 0.012; ex += (Math.sin(tt * 17.1) + Math.sin(tt * 9.3)) * sk; ey += (Math.sin(tt * 14.7 + 1) + Math.sin(tt * 8.1)) * sk; ez += (Math.sin(tt * 15.3 + 2) + Math.sin(tt * 10.7)) * sk;
     camera.position.set(ex, ey, ez);
-    let pitch = P.pitch + Math.cos(2 * ph) * 0.007 * mv * (1 - ads) + P.rc.p - BC.clamp((P.stnVel || 0) * 0.06, -0.12, 0.12), yaw = P.yaw + P.rc.y, roll = Math.sin(ph) * 0.012 * mv * (1 - ads) + Math.sin(tt * 2.3) * 0.03 * tn + Math.sin(tt * 11) * 0.006 * tn + P.fall * 0.9 + Math.sin(ph * 0.5) * 0.03 * P.prone * mv + (P.stnVel || 0) * 0.015;
+    let pitch = P.pitch + Math.cos(2 * ph) * 0.007 * mv * (1 - ads) + P.rc.p - BC.clamp((P.stnVel || 0) * 0.06, -0.12, 0.12) * (1 - ads), yaw = P.yaw + P.rc.y, roll = Math.sin(ph) * 0.012 * mv * (1 - ads) + Math.sin(tt * 2.3) * 0.03 * tn + Math.sin(tt * 11) * 0.006 * tn + P.fall * 0.9 + (Math.sin(ph * 0.5) * 0.03 * P.prone * mv + (P.stnVel || 0) * 0.015) * (1 - ads);
     pitch += P.fall * 0.5;
     pitch += BC.clamp(-C.ax * 0.0006, -0.03, 0.03) * (1 - 0.7 * ads) + BC.clamp(C.slope * 0.05, -0.06, 0.06) + C.ky * 0.35 * (1 - ads);
     roll += BC.clamp(-C.lat * 0.0045 - C.yr * 0.003, -0.06, 0.06) * (1 - 0.6 * ads) + C.sSide * C.amp * 0.0025 * (1 - ads);
@@ -463,6 +465,7 @@
     // nascer/pôr do sol, sol segue o jogador (sombras)
     sun.position.set(P.x + sunDir.x * 90, P.y + sunDir.y * 90, P.z + sunDir.z * 90); sun.target.position.set(P.x, P.y, P.z); sun.target.updateMatrixWorld();
     sky.position.copy(camera.position);
+    if (G.flash) { G.flash.intensity = G.flashOn && P.alive ? 2.6 : 0; if (G.flashOn) { const fd = camera.getWorldDirection(new T.Vector3()); G.flash.position.copy(camera.position); G.flash.target.position.copy(camera.position).addScaledVector(fd, 12); G.flash.target.updateMatrixWorld(); } }
     fx.updateWeather(dt, camera.position, G.time);
     // viewmodel
     if (G.drone) { vmGroup.visible = false; BC.UI.setAim(0, 0); post.k = 0.36; post.zoom = 0.82; return; }
@@ -516,7 +519,9 @@
         gm.position.set(0.17 - 0.05 * wind + 0.02 * thr_, -0.25 + 0.14 * wind - 0.06 * thr_, -0.34 + 0.22 * wind - 0.5 * thr_); gm.rotation.set(th * 4, th * 2, th * 3);
       }
     }
-    if (P.stn > 0.05) { const sc = P.crouch * 0.01 + P.prone * 0.03; py += -sc - Math.abs(P.stnVel || 0) * 0.012; pz += P.prone * 0.04; }
+    if (P.stn > 0.05) { const ka = 1 - ads, sc = P.crouch * 0.01 + P.prone * 0.03; py += (-sc - Math.abs(P.stnVel || 0) * 0.012) * ka; pz += P.prone * 0.04 * ka; }
+    // arma encostando em parede/terreno (agachado ou deitado): recolhe e levanta o cano em vez de atravessar
+    { const bf = camBasis().f, wl = 0.85, hh = G.world.raycast(ex, ey, ez, bf.x, bf.y, bf.z, wl), want = hh ? BC.clamp((wl - hh.t) / (wl - 0.2), 0, 1) : 0; vmState.clip = (vmState.clip || 0) + (want - (vmState.clip || 0)) * Math.min(1, (want > (vmState.clip || 0) ? 14 : 6) * dt); pz += vmState.clip * 0.2; rx += vmState.clip * 0.5; py -= vmState.clip * 0.03; }
     // recarga em fases
     const out = { px: 0, py: 0, pz: 0, rx: 0, ry: 0, rz: 0, hx: 0, hy: 0, hz: 0 };
     BC.VMA.reload(m, spec, P.rl, out);
@@ -547,6 +552,7 @@
       if (e.code === 'KeyE' && P.alive && BC.Vehicles) BC.Vehicles.useKey();
       if ((e.code === 'Digit5' || e.code === 'Digit6' || e.code === 'Digit7') && P.alive && BC.Drones) BC.Drones.launch(['recon', 'bomber', 'kamikaze'][+e.code.slice(5) - 5]);
       if (e.code === 'KeyT' && BC.Drones) BC.Drones.release(true);
+      if (e.code === 'KeyL' && P.alive) { G.flashOn = !G.flashOn; if (BC.Audio.cloth) BC.Audio.cloth(0.3); }
       if (e.code === 'KeyV' && P.alive && !(P.faintT > 0) && !P.heal && P.kit && P.kit.band > 0 && (P.bld > 0.01 || P.hp < 100)) { P.kit.band--; P.heal = { type: 'band', t: 0, dur: 2.4 }; BC.Audio.cloth && BC.Audio.cloth(0.8); }
       if (e.code === 'KeyX' && P.alive && !(P.faintT > 0) && !P.heal && P.kit && P.kit.med > 0 && (P.bld > 0.01 || P.hp < 100)) { P.kit.med--; P.heal = { type: 'med', t: 0, dur: 5 }; BC.Audio.cloth && BC.Audio.cloth(0.8); }
       if (e.code === 'KeyG' && P.alive && !P.thr && P.swapT <= 0 && P.gren[P.grSel] > 0) { P.thr = { t: 0, type: P.grSel }; P.rl = null; aimTog = false; BC.Audio.gren('pin', 0, 0, 0.8); }
