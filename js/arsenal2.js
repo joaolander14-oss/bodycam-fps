@@ -86,6 +86,9 @@
       V('sp101', 'Ruger SP101', 'detective', { cal: '357', mag: 5, mass: 0.7, v0: 420, origin: 'EUA' }, ''), V('raging', 'Taurus Raging Bull', 'm29', { cal: '454casull', origin: 'Brasil', mass: 1.9, v0: 590 }, ''), V('anaconda', 'Colt Anaconda', 'python', { cal: '44mag', origin: 'EUA', mass: 1.5, v0: 430 }, ''), V('webley', 'Webley Mk VI', 'detective', { cal: '45colt', origin: 'Reino Unido', mag: 6, v0: 190 }, ''),
       V('saiga12', 'Saiga-12', 'benelli', { origin: 'Rússia', mag: 8, mass: 3.6, rpm: 180 }, ''), V('spas15', 'Franchi SPAS-15', 'moss500', { origin: 'Itália', mag: 6, mass: 3.9, rpm: 150 }, ''), V('stoeger', 'Stoeger Coach Gun', 'coach', { origin: 'Turquia', mass: 3.0 }, '')
     );
+    // modelos 3D mais realistas (CC0) no lugar dos genéricos
+    const OV = { makarov: 'pool:makarov_cc0:glb', kar98k: 'pool:kar98k_obj:obj', c96: 'pool:mauser_c96:obj', ak47: 'pool:ak47_tex:glb', m4a1: 'pool:m4a1_tex:glb' };
+    T.forEach((r) => { if (OV[r[0]]) r[11] = OV[r[0]]; }); rows.forEach((r) => { if (OV[r[0]]) r[11] = OV[r[0]]; });
     return rows;
   };
 })();

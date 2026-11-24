@@ -33,7 +33,7 @@
     BC.TEAMS.forEach((t, i) => { const o = document.createElement('option'); o.value = i; o.textContent = t.name; $('oEnemy').appendChild(o); });
     if (S.skin >= BC.TEAMS.length) S.skin = 4;
     if (S.enemy === undefined || S.enemy === S.skin) S.enemy = S.skin === 1 ? 0 : 1; $('oEnemy').value = S.enemy;
-    for (const [k, n] of BC.Modes.list) { const o = document.createElement('option'); o.value = k; o.textContent = n; $('oMode').appendChild(o); } $('oMode').value = S.mode || 'tdm';
+    for (const [k, n] of BC.Modes.list) { const o = document.createElement('option'); o.value = k; o.textContent = n; $('oMode').appendChild(o); } $('oMode').value = S.mode || 'tdm'; $('oVeh').value = S.vehicles || 'on';
     for (const k in BC.DIFF) { const o = document.createElement('option'); o.value = k; o.textContent = BC.DIFF[k].name; $('oDiff').appendChild(o); }
     $('oDiff').value = S.diff; $('oSize').value = S.size; $('oMapSize').value = S.mapSize || 'grande'; $('oQual').value = S.quality;
     $('oFov').value = S.fov; $('oSens').value = Math.round(S.sens * 100); $('oVol').value = Math.round(S.vol * 100); $('oDot').checked = S.dot;
@@ -41,7 +41,7 @@
     sync();
     ['oFov', 'oSens', 'oVol'].forEach((id) => $(id).addEventListener('input', sync));
     const collect = UI.collect = () => {
-      S.mode = $('oMode').value; S.diff = $('oDiff').value; S.farda = $('oFarda').value; S.fardaE = $('oFardaE').value; S.size = +$('oSize').value; S.mapSize = $('oMapSize').value; S.quality = $('oQual').value; S.fov = +$('oFov').value; S.sens = $('oSens').value / 100; S.vol = $('oVol').value / 100; S.enemy = +$('oEnemy').value; if (S.enemy === S.skin) S.enemy = (S.skin + 1) % BC.TEAMS.length;
+      S.mode = $('oMode').value; S.vehicles = $('oVeh').value; S.diff = $('oDiff').value; S.farda = $('oFarda').value; S.fardaE = $('oFardaE').value; S.size = +$('oSize').value; S.mapSize = $('oMapSize').value; S.quality = $('oQual').value; S.fov = +$('oFov').value; S.sens = $('oSens').value / 100; S.vol = $('oVol').value / 100; S.enemy = +$('oEnemy').value; if (S.enemy === S.skin) S.enemy = (S.skin + 1) % BC.TEAMS.length;
     };
     $('play').onclick = () => {
       if (BC.MP) BC.MP.leave(); collect();

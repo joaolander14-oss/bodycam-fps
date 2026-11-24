@@ -157,7 +157,7 @@
   // ---------------------------------------------------------- gerenciamento
   const Vs = BC.Vehicles = { list: [] };
   Vs.setup = function () {
-    Vs.clear(); if (G.net || G.mode === 'hunt') return;
+    Vs.clear(); if (G.net || G.mode === 'hunt' || G.settings.vehicles === 'off') return;
     for (let t = 0; t < 2; t++) { const v = new BC.Vehicle(t); v.spawn(); Vs.list.push(v); G.actors.push(v); }
   };
   Vs.clear = function () { for (const v of Vs.list) { if (v.model) G.scene.remove(v.model); const i = G.actors.indexOf(v); if (i >= 0) G.actors.splice(i, 1); } Vs.list = []; };

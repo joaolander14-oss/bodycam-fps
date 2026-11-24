@@ -292,7 +292,11 @@
   }
   function updateReload(dt) {
     const P = G.player, r = P.rl; if (!r) return;
-    const w = P.w[P.cur], s = w.spec; r.t += dt;
+    const w = P.w[P.cur], s = w.spec;
+    // moral baixa: recarga mais lenta e com pausas imprevisíveis (mãos que tremem / erram)
+    const low = 1 - (P.morale === undefined ? 70 : P.morale) / 100;
+    if (r.pause > 0) { r.pause -= dt; dt = 0; } else if (Math.random() < (low * low * 0.9 + 0.02 * low) * dt) { r.pause = 0.15 + Math.random() * 0.55 * (0.5 + low); dt = 0; }
+    r.t += dt / (1 + low * 0.9 + (P.tension || 0) / 100 * 0.25);
     if (s.shellReload) {
       // um cartucho a cada 0.55 s (0.4 s de preparo no início)
       const lead = r.first ? 0.4 : 0, per = 0.55, k = (r.t - lead) / per;

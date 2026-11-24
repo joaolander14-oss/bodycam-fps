@@ -119,7 +119,8 @@
 
   const loaders = {
     fbx: (u) => new Promise((res, rej) => new T.FBXLoader().load(u, res, undefined, rej)),
-    glb: (u) => new Promise((res, rej) => new T.GLTFLoader().load(u, (g) => res(g.scene), undefined, rej))
+    glb: (u) => new Promise((res, rej) => new T.GLTFLoader().load(u, (g) => res(g.scene), undefined, rej)),
+    obj: (u) => new Promise((res, rej) => new T.OBJLoader().load(u, res, undefined, rej))
   };
   const FORCE = {};
 
