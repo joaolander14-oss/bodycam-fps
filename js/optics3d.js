@@ -80,7 +80,17 @@
     const flip = pr.frontAtPlusZ || FRONT_FLIP[type]; wrap.rotation.y = flip ? Math.PI : 0; wrap.scale.setScalar(k); wrap.position.set(0, 0, zc); g.add(wrap);
     inner.traverse((o) => { if (o.isMesh) { o.castShadow = false; o.material = o.material.clone(); if (o.material.metalness !== undefined) { o.material.metalness = Math.min(o.material.metalness, 0.3); o.material.roughness = Math.max(o.material.roughness, 0.55); } } });
     const H = pr.size.y * k, W = pr.size.x * k;
-    if (S.kind === 'dot') g.userData.win = { x: 0, y: H * 0.62, z: zc, w: W * 0.55, h: H * 0.42 };
+    // vidros (material "Glass" e a lente azul) ficam transparentes: dá para enxergar através da mira
+    const gb = new T.Box3(); let hasG = false; g.updateMatrixWorld(true);
+    inner.traverse((o) => {
+      if (!o.isMesh) return; const nm = (o.material.name || '').toLowerCase();
+      if (nm.includes('glass')) { o.material.transparent = true; o.material.opacity = 0.08; o.material.depthWrite = false; gb.union(new T.Box3().setFromObject(o)); hasG = true; }
+      else if (S.kind === 'dot' && (nm.includes('cerulean') || nm.includes('blue'))) { o.material.transparent = true; o.material.opacity = 0.14; o.material.depthWrite = false; }
+    });
+    if (S.kind === 'dot') {
+      if (hasG) { const c = gb.getCenter(new T.Vector3()), sz = gb.getSize(new T.Vector3()); g.userData.win = { x: c.x, y: c.y, z: c.z, w: Math.max(0.012, Math.min(sz.x, sz.y) * 0.85), h: Math.max(0.012, Math.min(sz.x, sz.y) * 0.85) }; }
+      else g.userData.win = { x: 0, y: H * 0.62, z: zc, w: W * 0.55, h: H * 0.42 };
+    }
     g.userData.type = type; g.userData.model = true; return g;
   };
 })();
