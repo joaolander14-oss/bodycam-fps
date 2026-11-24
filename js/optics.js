@@ -59,9 +59,8 @@
       const win = o.win, q = m.root.quaternion, p = m.root.position;
       _v.set(-p.x, -p.y, -p.z).applyQuaternion(_q.copy(q).invert());       // olho no espaço local
       const dz = (-1000 - _v.z), t = (win.z - _v.z) / dz, x = _v.x + t * (0 - _v.x), y = _v.y + t * (0 - _v.y);
-      const inside = Math.abs(x - win.x) < win.w * 0.46 && Math.abs(y - win.y) < win.h * 0.46;
-      o.grp.visible = inside && ads > 0.08; o.grp.position.set(x, y, win.z + 0.0004);
-      O.dbg = { x, y, inside, win, ex: _v.x, ey: _v.y, ez: _v.z, ads };
+      // o ponto fica no centro da janela da mira; o tiro sai por ele (ver game.js)
+      o.grp.visible = ads > 0.05; o.grp.position.set(win.x, win.y, win.z + 0.0004);
     }
   };
   O.render = function (scene) {
