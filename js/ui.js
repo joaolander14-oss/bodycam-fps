@@ -83,7 +83,7 @@
     }
     refreshSel();
     $('play').disabled = true; $('mstat').textContent = 'carregando modelos 3D…';
-    BC.loadModels().then(() => BC.loadArsenal()).then(() => BC.loadGrenades()).then(() => { if (BC.loadAnimals) BC.loadAnimals(); }).catch((e) => console.warn('carga', e)).then(() => { $('play').disabled = false; $('mstat').textContent = BC.WEAPONS.length + ' armas · ' + Object.keys(BC.MODELS).length + ' com modelo 3D · ' + (BC.SOUND_DATA ? Object.values(BC.SOUND_DATA).reduce((a, b) => a + b.length, 0) + ' gravações de tiro' : 'sons sintéticos'); });
+    BC.loadModels().then(() => BC.loadArsenal()).then(() => BC.loadGrenades()).then(() => { if (BC.loadAnimals) BC.loadAnimals(); return BC.loadSights && BC.loadSights(); }).catch((e) => console.warn('carga', e)).then(() => { $('play').disabled = false; $('mstat').textContent = BC.WEAPONS.length + ' armas · ' + Object.keys(BC.MODELS).length + ' com modelo 3D · ' + (BC.SOUND_DATA ? Object.values(BC.SOUND_DATA).reduce((a, b) => a + b.length, 0) + ' gravações de tiro' : 'sons sintéticos'); });
     // relógio
     setInterval(() => { const n = new Date(), p = (v) => String(v).padStart(2, '0'); $('clock').textContent = `${n.getFullYear()}-${p(n.getMonth() + 1)}-${p(n.getDate())} ${p(n.getHours())}:${p(n.getMinutes())}:${p(n.getSeconds())}`; }, 500);
   };

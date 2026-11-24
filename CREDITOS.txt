@@ -41,3 +41,6 @@ CC BY 3.0: água — "Footsteps on different surfaces" por congusbongus (https:/
 --- Sons de granadas (gravações reais, OpenGameArt) ---
 CC0: 100-cc0-sfx e 75-cc0-breaking-falling-hit-sfx e 25-cc0-bang-firework-sfx (rubberduck); mechanical-sounds e metal-impact-sounds (bmaczero); scrapes (antumdeluge); swishes-sound-pack (artisticdude); air-whoosh (pyranostudios); steam-release-sounds (bart); compressed-gas-leak-sfx (0new4y); explosion (tinyworlds); mechanical-explosion (spring-spring); explosions-4 (ezduzziteh); muffled-distant-explosion (nenadsimic); flash-bang-sound (teeeece).
 CC BY 4.0: "Metal Click" por Mobeyee Sounds — https://opengameart.org/content/metal-click
+
+--- Modelos 3D das miras (CC0) ---
+Pichuliru (Poly Pizza, CC0): Red Dot, Reflex, Holographic, Magnified (ACOG), Scope. https://poly.pizza (ids S9sDv7SZRm, WYL5bcaqr5, NvuLseKLaD, UHEJDoCrcf, 11AYWUakkH, fIEM6qRfSt, 1QxV2Mk5l4, 98ocxnqLFf)

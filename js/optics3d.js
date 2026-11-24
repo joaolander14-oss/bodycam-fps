@@ -56,4 +56,31 @@
     }
     g.userData.type = type; return g;
   };
+
+  // ---------------------------------------------------------- modelos prontos (Pichuliru, CC0) para as miras principais
+  const FILES = { reddot: ['reddot', 1], micro: ['micro', 0.9], reflex: ['reflex', 1], holo: ['holo', 1], acog: ['acog', 1.25], prism: ['prism', 1.1], lpvo: ['lpvo', 0.8], mid: ['mid', 0.85], dmr: ['mid', 1.0], long: ['mid', 1.08] };
+  const FRONT_FLIP = { reddot: false, micro: false, reflex: false, holo: false };
+  BC.SIGHT_PROTO = {}; const loaded = {};
+  function prepSight(file, scene) {
+    scene.updateMatrixWorld(true); const box = new T.Box3().setFromObject(scene), size = box.getSize(new T.Vector3()), c = box.getCenter(new T.Vector3());
+    // extremos em z: o mais "gordo" é a objetiva (frente = -z)
+    let big = { lo: 0, hi: 0 }; const ext = (lo) => { const b = new T.Box3(), v = new T.Vector3(); scene.traverse((o) => { if (!o.isMesh) return; const pos = o.geometry.attributes.position; for (let i = 0; i < pos.count; i++) { v.fromBufferAttribute(pos, i).applyMatrix4(o.matrixWorld); const t = (v.z - box.min.z) / size.z; if (lo ? t < 0.2 : t > 0.8) b.expandByPoint(v); } }); const s2 = b.getSize(new T.Vector3()); return s2.x * s2.y; };
+    big.lo = ext(true); big.hi = ext(false);
+    return { scene, size, c, min: box.min.clone(), frontAtPlusZ: big.hi > big.lo * 1.08 };
+  }
+  BC.loadSights = function () {
+    const loader = new T.GLTFLoader(), files = [...new Set(Object.values(FILES).map((f) => f[0]))];
+    return Promise.all(files.map((f) => new Promise((res) => loader.load('models/sights/' + f + '.glb', (g) => { try { loaded[f] = prepSight(f, g.scene); } catch (e) { console.warn('mira', f, e); } res(); }, undefined, () => res()))));
+  };
+  const procScope = BC.makeScope;
+  BC.makeScope = function (type, G, cls) {
+    const F = FILES[type], pr = F && loaded[F[0]]; if (!pr) return procScope(type, G, cls);
+    const S = BC.SCOPES[type], zc = (cls === 'sniper' ? -0.06 : -0.03), g = new T.Group(), wrap = new T.Group(), inner = pr.scene.clone(true), k = F[1];
+    inner.position.set(-pr.c.x, -pr.min.y, -pr.c.z); wrap.add(inner);
+    const flip = pr.frontAtPlusZ || FRONT_FLIP[type]; wrap.rotation.y = flip ? Math.PI : 0; wrap.scale.setScalar(k); wrap.position.set(0, 0, zc); g.add(wrap);
+    inner.traverse((o) => { if (o.isMesh) { o.castShadow = false; o.material = o.material.clone(); if (o.material.metalness !== undefined) { o.material.metalness = Math.min(o.material.metalness, 0.3); o.material.roughness = Math.max(o.material.roughness, 0.55); } } });
+    const H = pr.size.y * k, W = pr.size.x * k;
+    if (S.kind === 'dot') g.userData.win = { x: 0, y: H * 0.62, z: zc, w: W * 0.55, h: H * 0.42 };
+    g.userData.type = type; g.userData.model = true; return g;
+  };
 })();
