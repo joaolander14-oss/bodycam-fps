@@ -88,3 +88,7 @@ input[type=range]{padding:0;width:140px}
 
 #bl{display:none}
 #pts{position:absolute;left:50%;top:9%;transform:translateX(-50%);font-size:1.05em;letter-spacing:2px;text-shadow:0 0 4px #000;white-space:nowrap}#pts small{opacity:.7;font-size:.75em}
+
+#cracks{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:6}
+#spots{position:fixed;inset:0;pointer-events:none;z-index:7}#spots i{position:absolute;width:0;height:0;border-left:7px solid transparent;border-right:7px solid transparent;border-top:12px solid #ff3a2a;transform:translate(-50%,-100%);filter:drop-shadow(0 0 3px #000)}#spots b{position:absolute;transform:translate(-50%,2px);font:11px monospace;color:#ff8a7a;text-shadow:0 0 3px #000}
+#dr{position:fixed;left:50%;bottom:6%;transform:translateX(-50%);z-index:8;font:13px monospace;letter-spacing:2px;color:#cfe;text-shadow:0 0 4px #000;text-align:center;pointer-events:none;white-space:pre}

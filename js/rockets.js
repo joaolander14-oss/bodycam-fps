@@ -27,6 +27,7 @@
     BC.Audio.shot && BC.Audio.shot('sg', owner && owner.isPlayer ? 0 : Math.hypot(G.player.x - o.x, G.player.z - o.z), G.panTo(o.x, o.z), !!(owner && owner.isPlayer), 0.5, false);
     G.fx.puff(o.x - d.x, o.y - d.y, o.z - d.z, 0xdddddd, 8, 1.2, 0.8, 1.0);
   };
+  R.blast = function (owner, p, rk) { explode({ owner, rk: Object.assign({ k: 'he', rad: 6, vdmg: 200 }, rk) }, p, { x: 0, y: 1, z: 0 }, null, null); };
   R.clear = function () { for (const r of list) if (r.mesh) G.scene.remove(r.mesh); list.length = 0; };
   R.update = function (dt) {
     const w = G.world; if (!w) return;

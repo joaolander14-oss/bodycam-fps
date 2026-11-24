@@ -149,7 +149,7 @@
   };
 
   B.visible = function (e) {
-    const w = this.G.world, ex = e.x, ez = e.z, ey = e.y + (e.isPlayer ? 1.0 * (e.h / 1.78) : e.isAnimal ? e.h * 0.5 : e.isVehicle ? 1.4 : 1.1);
+    const w = this.G.world, ex = e.x, ez = e.z, ey = e.y + (e.isPlayer ? 1.0 * (e.h / 1.78) : (e.isAnimal || e.isDrone) ? e.h * 0.5 : e.isVehicle ? 1.4 : 1.1);
     return w.los(this.x, this.y + this.eyeH(), this.z, ex, ey, ez);
   };
 
@@ -261,7 +261,7 @@
       wantYaw = Math.atan2(-dx, -dz); this.engT += dt;
       this.grenT -= dt;
       if (this.gren && this.grenT <= 0 && ((!this.seen && this.lostT > 0.4 && d > 10 && d < 38) || (this.seen && d > 14 && d < 32 && this.phase === 'hide' && G.rng() < 0.02))) this.throwGren(tx, tz, e.y);
-      const eyeY = this.y + this.eyeH(), ty = e.y + (e.isPlayer ? 1.0 * (e.h / 1.78) : e.isAnimal ? e.h * 0.5 : e.isVehicle ? 1.4 : 1.15);
+      const eyeY = this.y + this.eyeH(), ty = e.y + (e.isPlayer ? 1.0 * (e.h / 1.78) : (e.isAnimal || e.isDrone) ? e.h * 0.5 : e.isVehicle ? 1.4 : 1.15);
       wantPitch = BC.clamp(Math.atan2(ty - eyeY, d), -0.6, 0.6);
       const pref = PREF[spec.cls], fx = -Math.sin(this.yaw), fz = -Math.cos(this.yaw);
       this.coverT -= dt; this.phT -= dt;
@@ -355,7 +355,7 @@
     const interval = 60 / spec.rpm;
     const sem = !spec.auto;
     const eye = { x: this.x, y: this.y + this.eyeH(), z: this.z };
-    const ty = e.y + (e.isPlayer ? 1.0 * (e.h / 1.78) : e.isAnimal ? e.h * 0.5 : e.isVehicle ? 1.4 : 1.12) + (!e.isAnimal && rng() < 0.08 ? 0.45 : 0);
+    const ty = e.y + (e.isPlayer ? 1.0 * (e.h / 1.78) : (e.isAnimal || e.isDrone) ? e.h * 0.5 : e.isVehicle ? 1.4 : 1.12) + (!e.isAnimal && rng() < 0.08 ? 0.45 : 0);
     let dx = e.x - eye.x, dy = ty - eye.y, dz = e.z - eye.z; const l = Math.hypot(dx, dy, dz); dx /= l; dy /= l; dz /= l;
     // erro de pontaria: maior no início do engajamento, com distância e em movimento
     const moving = Math.hypot(this.vx, this.vz) > 1;

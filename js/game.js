@@ -145,9 +145,9 @@
       if (m > bd) { bd = m; best = s; }
     }
     P.x = best.x; P.z = best.z; P.y = w.heightAt(P.x, P.z); P.vx = P.vy = P.vz = 0; P.onGround = true;
-    P.hp = 100; P.alive = true; P.deadT = 0; P.yaw = 0; P.pitch = 0; P.rc.p = P.rc.y = 0; P.rl = null; P.swapT = 0; P.adsT = 0; P.crouch = 0; P.prone = 0; P.stn = 0; P.proneTog = false; P.eyeY = 1.4; P.fall = 0; P.thr = null; P.bld = 0; P.faintT = 0; P.kit = { band: 1, med: 1 }; P.heal = null; P.inVeh = null; P.gren = { frag: 2, flash: 1, smoke: 1 }; P.grSel = 'frag'; G.blind = 0;
+    P.hp = 100; P.alive = true; P.deadT = 0; P.yaw = 0; P.pitch = 0; P.rc.p = P.rc.y = 0; P.rl = null; P.swapT = 0; P.adsT = 0; P.crouch = 0; P.prone = 0; P.stn = 0; P.proneTog = false; P.eyeY = 1.4; P.fall = 0; P.thr = null; P.bld = 0; P.faintT = 0; P.drones = { recon: 1, bomber: 1, kamikaze: 2 }; P.kit = { band: 1, med: 1 }; P.heal = null; P.inVeh = null; P.gren = { frag: 2, flash: 1, smoke: 1 }; P.grSel = 'frag'; G.blind = 0;
     for (const wp of P.w) { wp.mag = wp.spec.mag; wp.reserve = wp.spec.reserve; }
-    selectWeapon(0, false); P.tension = 15; P.morale = 60; if (!first) { G.glitch = 1.6; G.flashScreen = 0.1; }
+    selectWeapon(0, false); P.tension = 15; P.morale = 60; G.clearCracks(); if (!first) { G.glitch = 1.6; G.flashScreen = 0.1; }
     for (const t of w.crates) t.t = 0;
   }
   function selectWeapon(i, instant) {
@@ -175,11 +175,11 @@
     if (best) {
       const mul = bz === 'head' ? spec.headMul : bz === 'legs' ? spec.legMul : 1;
       let dmg = spec.dmg * mul * BC.falloff(spec, bt) * scale;
-      const reg = (best.isAnimal || best.isVehicle) ? null : BC.Anatomy.hit(best, px, py, pz, bz, spec);
+      const reg = (best.isAnimal || best.isVehicle || best.isDrone) ? null : BC.Anatomy.hit(best, px, py, pz, bz, spec);
       if (reg) { dmg = spec.dmg * reg.mul * BC.falloff(spec, bt) * scale; if (reg.kill) dmg = Math.max(dmg, 999); reg.pw = BC.clamp(spec.dmg * scale / 55, 0.5, 2.4); if (shooter.isPlayer) G.lastRegion = reg.n; }
-      if (best.isVehicle) fx.impact({ x: px, y: py, z: pz }, { nx: -d.x, ny: -d.y, nz: -d.z, tag: 'metal' }, 'metal', false); else fx.blood({ x: px, y: py, z: pz }, d, bz, w, Math.min(dmg, 160));
+      if (best.isVehicle || best.isDrone) fx.impact({ x: px, y: py, z: pz }, { nx: -d.x, ny: -d.y, nz: -d.z, tag: 'metal' }, 'metal', false); else fx.blood({ x: px, y: py, z: pz }, d, bz, w, Math.min(dmg, 160));
       let killed = false;
-      if (!best.isPlayer && !best.isVehicle && shooter.isPlayer && bt < 3.2) BC.UI.lensBlood(1 + Math.round(dmg / 45));
+      if (!best.isPlayer && !best.isVehicle && !best.isDrone && shooter.isPlayer && bt < 3.2) BC.UI.lensBlood(1 + Math.round(dmg / 45));
       if (best.isPlayer) { G._reg = reg; killed = G.hurtPlayer(dmg, shooter, bz, spec.id); }
       else { best._reg = reg; best._hit = { x: px, y: py, z: pz }; killed = best.damage(dmg, bz, shooter, spec.id, d, null); }
       
@@ -204,11 +204,13 @@
   G.netHurt = function (hp, dmg, fx_, fz_, zone) {
     const P = G.player; if (!P.alive) return;
     P.hp = hp; P.lastHurt = G.time; G.stress(dmg); BC.Audio.hurt(); G.glitch = Math.min(1, G.glitch + 0.35 + dmg / 80); P.hitFlash = 1;
-    BC.UI.indicator(Math.atan2(fx_ - P.x, fz_ - P.z)); BC.UI.lensBlood(Math.min(6, 2 + Math.round(dmg / 25)));
+    BC.UI.indicator(Math.atan2(fx_ - P.x, fz_ - P.z), dmg); BC.UI.lensBlood(Math.min(6, 2 + Math.round(dmg / 25)));
     if (hp <= 0) { P.hp = 0; aimTog = false; P.alive = false; P.deadT = 0; P.deaths++; P.fall = 0; G.glitch = 1.6; BC.Audio.death(); fx.pool(P.x, P.y, P.z, dmg); }
   };
   G.stress = function (dmg) { const P = G.player; P.tension = Math.min(100, (P.tension || 0) + 12 + dmg * 0.22); P.morale = Math.max(0, (P.morale || 0) - 8 - dmg * 0.1); };
-  G.lg = [];
+  G.lg = []; G.cracks = [];
+  G.addCrack = function (x, y, r) { G.cracks.push({ x, y, r, a: 0.9, seed: (Math.random() * 1e6) | 0 }); if (G.cracks.length > 6) G.cracks.shift(); G.glitch = Math.max(G.glitch, 0.5); BC.UI.drawCracks(); };
+  G.clearCracks = function () { G.cracks.length = 0; if (BC.UI.drawCracks) BC.UI.drawCracks(); };
   G.addLocalGlitch = function (x, y, a) { G.lg.push({ x, y, a }); if (G.lg.length > 4) G.lg.shift(); };
   function updateTension(dt) {
     const P = G.player; let near = 1e9;
@@ -225,7 +227,7 @@
     P.hp -= dmg; P.lastHurt = G.time; G.stress(dmg);
     const RG = G._reg; G._reg = null;
     if (RG && P.hp > 0) { P.bld = (P.bld || 0) + RG.bleed * (RG.pw || 1); P.lastFrom = from; if (RG.faint && Math.random() < RG.faint && !(P.faintT > 0)) { P.faintT = RG.fmin + Math.random() * (RG.fmax - RG.fmin); P.fall = 0; aimTog = false; mouseL = false; } } BC.Audio.hurt(); G.glitch = Math.min(1, G.glitch + 0.35 + dmg / 80); P.hitFlash = 1;
-    BC.UI.indicator(Math.atan2(from.x - P.x, from.z - P.z)); BC.UI.lensBlood(Math.min(6, 2 + Math.round(dmg / 25)));
+    BC.UI.indicator(Math.atan2(from.x - P.x, from.z - P.z), dmg); BC.UI.lensBlood(Math.min(6, 2 + Math.round(dmg / 25)));
     if (P.hp <= 0) { P.hp = 0; aimTog = false; P.alive = false; P.deadT = 0; P.deaths++; P.fall = 0; G.glitch = 1.6; BC.Audio.death(); fx.pool(P.x, P.y, P.z, dmg); G.onKill(from, P, wid, zone === 'head'); return true; }
     return false;
   };
@@ -319,6 +321,7 @@
   function updatePlayer(dt) {
     const P = G.player, w = G.world;
     if (!P.alive) {
+      if (G.drone) BC.Drones.release(false);
       P.deadT += dt; P.fall = Math.min(1, P.fall + dt * 2.2);
       if (P.deadT > 4.2 && G.running && !G.over && G.net !== 'guest') spawnPlayer(false);
       return;
@@ -326,6 +329,7 @@
     if (P.fall > 0 && !(P.faintT > 0)) P.fall = Math.max(0, P.fall - dt * 1.4);
     if (P.bld > 0.01) { P.bld *= Math.exp(-0.08 * dt); P.hp -= P.bld * dt; if (P.hp <= 0.5) { P.hp = 1; G.hurtPlayer(5, P.lastFrom || { x: P.x, z: P.z, team: -1, alive: true, name: 'Hemorragia' }, 'body', 'bleed'); return; } }
     if (P.faintT > 0) { P.faintT -= dt; P.fall = Math.min(1, P.fall + dt * 2.2); P.vx *= 0.9; P.vz *= 0.9; P.adsT *= 0.8; if (P.faintT <= 0) P.hp = Math.max(P.hp, 12); return; }
+    if (G.drone) { P.vx *= 0.8; P.vz *= 0.8; BC.Drones.control(dt); if (G.drone) return; }
     if (P.heal) { P.heal.t += dt; if (P.heal.t >= P.heal.dur) { if (P.heal.type === 'band') { P.bld = 0; P.hp = Math.min(100, P.hp + 8); } else { P.bld = 0; P.hp = Math.min(100, P.hp + 65); P.tension = Math.max(0, P.tension - 30); } if (G.net === 'guest' && BC.MP) BC.MP.sendHeal(P.hp); P.heal = null; } }
     const wp = P.w[P.cur], spec = wp.spec;
     // entrada de movimento
@@ -447,11 +451,13 @@
     pitch += BC.clamp(-C.ax * 0.0006, -0.03, 0.03) * (1 - 0.7 * ads) + BC.clamp(C.slope * 0.05, -0.06, 0.06) + C.ky * 0.35 * (1 - ads);
     roll += BC.clamp(-C.lat * 0.0045 - C.yr * 0.003, -0.06, 0.06) * (1 - 0.6 * ads) + C.sSide * C.amp * 0.0025 * (1 - ads);
     _e.set(BC.clamp(pitch, -1.5, 1.5), yaw, roll, 'YXZ'); camera.quaternion.setFromEuler(_e);
+    if (G.drone && G.drone.alive) { const dd = G.drone; camera.fov = 100; camera.updateProjectionMatrix(); camera.position.set(dd.x, dd.y, dd.z); _e.set(dd.pitch, dd.yaw, dd.roll || 0, 'YXZ'); camera.quaternion.setFromEuler(_e); }
     // nascer/pôr do sol, sol segue o jogador (sombras)
     sun.position.set(P.x + sunDir.x * 90, P.y + sunDir.y * 90, P.z + sunDir.z * 90); sun.target.position.set(P.x, P.y, P.z); sun.target.updateMatrixWorld();
     sky.position.copy(camera.position);
     fx.updateWeather(dt, camera.position, G.time);
     // viewmodel
+    if (G.drone) { vmGroup.visible = false; BC.UI.setAim(0, 0); post.k = 0.36; post.zoom = 0.82; return; }
     const m = vm[P.cur]; if (!m) return;
     const scoped = wst.scoped && ads > 0.92;
     vmGroup.visible = P.alive && !(P.fall > 0.3); BC.UI.setScope(false); BC.UI.setDot(false);
@@ -531,6 +537,8 @@
       if (e.code === 'KeyF' && P.alive) aimTog = !aimTog;
       if (e.code === 'KeyZ' && P.alive) P.proneTog = !P.proneTog;
       if (e.code === 'KeyE' && P.alive && BC.Vehicles) BC.Vehicles.useKey();
+      if ((e.code === 'Digit5' || e.code === 'Digit6' || e.code === 'Digit7') && P.alive && BC.Drones) BC.Drones.launch(['recon', 'bomber', 'kamikaze'][+e.code.slice(5) - 5]);
+      if (e.code === 'KeyT' && BC.Drones) BC.Drones.release(true);
       if (e.code === 'KeyV' && P.alive && !(P.faintT > 0) && !P.heal && P.kit && P.kit.band > 0 && (P.bld > 0.01 || P.hp < 100)) { P.kit.band--; P.heal = { type: 'band', t: 0, dur: 2.4 }; BC.Audio.cloth && BC.Audio.cloth(0.8); }
       if (e.code === 'KeyX' && P.alive && !(P.faintT > 0) && !P.heal && P.kit && P.kit.med > 0 && (P.bld > 0.01 || P.hp < 100)) { P.kit.med--; P.heal = { type: 'med', t: 0, dur: 5 }; BC.Audio.cloth && BC.Audio.cloth(0.8); }
       if (e.code === 'KeyG' && P.alive && !P.thr && P.swapT <= 0 && P.gren[P.grSel] > 0) { P.thr = { t: 0, type: P.grSel }; P.rl = null; aimTog = false; BC.Audio.gren('pin', 0, 0, 0.8); }
@@ -555,13 +563,13 @@
       if (!locked || !G.running) return; const P = G.player; if (!P.alive || P.faintT > 0) return;
       const hipT = Math.tan(BC.rad(G.hipV || 60) / 2), curT = Math.tan(BC.rad(G.curFov || 60) / 2), ratio = curT / hipT;
       const sens = 0.0022 * G.settings.sens * ratio;
-      P.yaw -= e.movementX * sens; P.pitch = BC.clamp(P.pitch - e.movementY * sens, -1.553, 1.553);
+      const tgt = G.drone || P; tgt.yaw -= e.movementX * sens; tgt.pitch = BC.clamp(tgt.pitch - e.movementY * sens, -1.553, 1.553);
       vmState.sx = BC.clamp(vmState.sx - e.movementX * 0.0004, -0.05, 0.05); vmState.sy = BC.clamp(vmState.sy + e.movementY * 0.0004, -0.05, 0.05);
     });
   }
   G.lock = function () { const cv = renderer.domElement; if (cv.requestPointerLock) { const r = cv.requestPointerLock(); if (r && r.catch) r.catch(() => { }); } BC.Audio.init(); };
   G.isLocked = () => locked;
-  G.input = { keys, setMouse: (l, r) => { mouseL = l; mouseR = r; }, click: () => { edgeClick = true; } };
+  G.input = { take: () => { const v = edgeClick; edgeClick = false; return v; }, keys, setMouse: (l, r) => { mouseL = l; mouseR = r; }, click: () => { edgeClick = true; } };
 
   // ------------------------------------------------------------ laço
   let last = performance.now(), glitchDecay = 0;
@@ -577,13 +585,13 @@
       fx.update(dt, G.world);
       BC.Audio.ambientTick(dt);
     }
-    G.glitch = Math.max(0, G.glitch - dt * 2.2); G.flashScreen = Math.max(0, G.flashScreen - dt);
+    G.trans = Math.max(0, (G.trans || 0) - dt / 1.1); G.glitch = Math.max(0, G.glitch - dt * 2.2); G.flashScreen = Math.max(0, G.flashScreen - dt);
   };
   G.renderFrame = function (dt) {
     if (!G.player) return;
     updateCamera(dt || 0.016);
     BC.Optics.render(scene);
-    post.render(scene, camera, vm.length ? vmScene : null, vmCam, { time: G.time, glitch: G.glitch + (G.player.alive ? 0 : 0.15) + Math.min(1.1, (G.blind || 0) * 0.4), damage: G.player.hitFlash * 0.5 + (G.player.hp < 30 ? (30 - G.player.hp) / 80 : 0), dead: BC.smooth(0, 1, G.player.fall) * 0.85, lg: G.lg, flash: G.flashScreen * 1.5 + Math.min(1.6, (G.blind || 0) * 0.55) });
+    post.render(scene, camera, vm.length ? vmScene : null, vmCam, { time: G.time, glitch: G.glitch + (G.player.alive ? 0 : 0.15) + (G.drone ? 0.2 : 0) + (G.trans || 0) * 0.9 + Math.min(1.1, (G.blind || 0) * 0.4), damage: G.player.hitFlash * 0.5 + (G.player.hp < 30 ? (30 - G.player.hp) / 80 : 0), dead: Math.max(BC.smooth(0, 1, G.player.fall) * 0.85, (G.trans || 0) * 0.75), lg: G.lg, ck: G.cracks, flash: G.flashScreen * 1.5 + Math.min(1.6, (G.blind || 0) * 0.55) });
     BC.UI.frame(dt || 0.016);
   };
   function loop(now) {

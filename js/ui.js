@@ -83,7 +83,7 @@
     }
     refreshSel();
     $('play').disabled = true; $('mstat').textContent = 'carregando modelos 3D…';
-    BC.loadModels().then(() => BC.loadArsenal()).then(() => BC.loadGrenades()).then(() => { if (BC.loadAnimals) BC.loadAnimals(); return BC.loadSights && BC.loadSights(); }).catch((e) => console.warn('carga', e)).then(() => { $('play').disabled = false; $('mstat').textContent = BC.WEAPONS.length + ' armas · ' + Object.keys(BC.MODELS).length + ' com modelo 3D · ' + (BC.SOUND_DATA ? Object.values(BC.SOUND_DATA).reduce((a, b) => a + b.length, 0) + ' gravações de tiro' : 'sons sintéticos'); });
+    BC.loadModels().then(() => BC.loadArsenal()).then(() => BC.loadGrenades()).then(() => { if (BC.loadAnimals) BC.loadAnimals(); if (BC.Drones && BC.Drones.loadModels) BC.Drones.loadModels(); return BC.loadSights && BC.loadSights(); }).catch((e) => console.warn('carga', e)).then(() => { $('play').disabled = false; $('mstat').textContent = BC.WEAPONS.length + ' armas · ' + Object.keys(BC.MODELS).length + ' com modelo 3D · ' + (BC.SOUND_DATA ? Object.values(BC.SOUND_DATA).reduce((a, b) => a + b.length, 0) + ' gravações de tiro' : 'sons sintéticos'); });
     // relógio
     setInterval(() => { const n = new Date(), p = (v) => String(v).padStart(2, '0'); $('clock').textContent = `${n.getFullYear()}-${p(n.getMonth() + 1)}-${p(n.getDate())} ${p(n.getHours())}:${p(n.getMinutes())}:${p(n.getSeconds())}`; }, 500);
   };
@@ -108,11 +108,31 @@
     return;
     const h = $('hitm'); h.className = kill ? 'kill' : head ? 'head' : ''; h.style.opacity = 1; clearTimeout(hmT); hmT = setTimeout(() => { h.style.opacity = 0; }, 130);
   };
-  UI.indicator = function (angWorld) { // ângulo mundo→relativo ao olhar
+  UI.indicator = function (angWorld, dmg) { // ângulo mundo→relativo ao olhar
     const P = G.player, rel = Math.atan2(Math.sin(Math.PI + P.yaw - angWorld), Math.cos(Math.PI + P.yaw - angWorld));
     G.addLocalGlitch(0.5 + Math.sin(rel) * 0.33, 0.5 + Math.cos(rel) * 0.3, 0.7);
+    if (dmg > 2) G.addCrack(BC.clamp(0.5 + Math.sin(rel) * 0.3 + (Math.random() - 0.5) * 0.1, 0.1, 0.9), BC.clamp(0.5 + Math.cos(rel) * 0.26 + (Math.random() - 0.5) * 0.1, 0.12, 0.88), 0.05 + Math.min(0.12, dmg / 600));
     const el = document.createElement('i'); el.style.transform = `rotate(${rel}rad)`; $('indic').appendChild(el); setTimeout(() => el.remove(), 1100);
   };
+  // lente trincada: cada tiro que atinge a câmera deixa uma rachadura (desenhada aqui) e um chiado do mesmo tamanho (no shader)
+  UI.drawCracks = function () {
+    const cv = $('cracks'); if (!cv.getContext) return; const W = cv.width = window.innerWidth, Hh = cv.height = window.innerHeight, g = cv.getContext('2d'); g.clearRect(0, 0, W, Hh);
+    for (const c of G.cracks) {
+      const rng = BC.rng(c.seed), cx = c.x * W, cy = (1 - c.y) * Hh, R = c.r * Hh, n = 9 + ((rng() * 5) | 0), pts = [];
+      g.lineCap = 'round';
+      for (let i = 0; i < n; i++) {
+        const a0 = i / n * 6.283 + (rng() - 0.5) * 0.4; let x = cx, y = cy, a = a0, len = R * (0.55 + rng() * 0.6); const path = [[x, y]]; const seg = 3 + ((rng() * 3) | 0);
+        for (let k = 0; k < seg; k++) { a += (rng() - 0.5) * 0.5; const l = len / seg * (0.7 + rng() * 0.6); x += Math.cos(a) * l; y += Math.sin(a) * l; path.push([x, y]); if (rng() < 0.35 && k > 0) { const ba = a + (rng() < 0.5 ? -1 : 1) * (0.5 + rng() * 0.5); g.beginPath(); g.moveTo(x, y); g.lineTo(x + Math.cos(ba) * l * 0.8, y + Math.sin(ba) * l * 0.8); g.strokeStyle = 'rgba(255,255,255,.5)'; g.lineWidth = 0.8; g.stroke(); } }
+        pts.push(path);
+        g.beginPath(); path.forEach((q, k) => k ? g.lineTo(q[0] + 0.9, q[1] + 0.9) : g.moveTo(q[0] + 0.9, q[1] + 0.9)); g.strokeStyle = 'rgba(0,0,0,.55)'; g.lineWidth = 1.6; g.stroke();
+        g.beginPath(); path.forEach((q, k) => k ? g.lineTo(q[0], q[1]) : g.moveTo(q[0], q[1])); g.strokeStyle = 'rgba(235,245,255,.85)'; g.lineWidth = 1.1; g.stroke();
+      }
+      for (const f of [0.28, 0.5, 0.74]) for (let i = 0; i < pts.length; i++) { const p1 = pts[i], p2 = pts[(i + 1) % pts.length], k1 = Math.min(p1.length - 1, Math.max(1, Math.round(f * (p1.length - 1)))), k2 = Math.min(p2.length - 1, Math.max(1, Math.round(f * (p2.length - 1)))); if (rng() < 0.7) { g.beginPath(); g.moveTo(p1[k1][0], p1[k1][1]); g.lineTo(p2[k2][0], p2[k2][1]); g.strokeStyle = 'rgba(225,238,255,.55)'; g.lineWidth = 0.9; g.stroke(); } }
+      const gr = g.createRadialGradient(cx, cy, 0, cx, cy, R * 0.55); gr.addColorStop(0, 'rgba(255,255,255,.35)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = gr; g.beginPath(); g.arc(cx, cy, R * 0.55, 0, 7); g.fill();
+      g.fillStyle = 'rgba(0,0,0,.7)'; g.beginPath(); g.arc(cx, cy, 2.6, 0, 7); g.fill();
+    }
+  };
+  window.addEventListener('resize', () => { if (G.cracks && G.cracks.length) UI.drawCracks(); });
   UI.killfeed = function (k, v, wid, head) {
     return;
     const f = $('feed'), d = document.createElement('div'), w = BC.WMAP[wid];
@@ -146,7 +166,7 @@
     const row = (a) => `<tr><td>${a.isPlayer ? '▶ ' : ''}${String(a.name).replace(/[<>&"]/g, '')}</td><td>${a.kills || 0}</td><td>${a.deaths || 0}</td></tr>`;
     let h = '';
     for (let t = 0; t < 2; t++) {
-      const list = G.actors.filter((a) => a.team === t).sort((a, b) => (b.kills || 0) - (a.kills || 0));
+      const list = G.actors.filter((a) => a.team === t && !a.isDrone).sort((a, b) => (b.kills || 0) - (a.kills || 0));
       h += `<div class="tt">${G.teamDefs[t].name.toUpperCase()} — ${G.score[t]}</div><table><tr><th>Soldado</th><th>Abates</th><th>Mortes</th></tr>${list.map(row).join('')}</table>`;
     }
     el.innerHTML = h; el.classList.remove('hidden');
@@ -168,7 +188,7 @@
     const P = G.player; if (!P) return;
     const t = Math.floor((performance.now() - recStart) / 1000), p = (v) => String(v).padStart(2, '0');
     $('recT').textContent = `${p(Math.floor(t / 3600))}:${p(Math.floor(t / 60) % 60)}:${p(t % 60)}`;
-    const P2 = G.player; if (P2 && P2.gren) { const g = BC.GREN[P2.grSel]; $('gren').textContent = P2.gren[P2.grSel] > 0 ? g.short + ' ×' + P2.gren[P2.grSel] + '  [G] lançar · [H] trocar   ' + Object.keys(P2.gren).map((k) => BC.GREN[k].short + ':' + P2.gren[k]).join(' ') : 'sem granadas'; $('stance').textContent = P2.prone > 0.5 ? 'DEITADO' : P2.crouch > 0.5 ? 'AGACHADO' : ''; $('gren').textContent += '   V bandagem ×' + (P2.kit ? P2.kit.band : 0) + '  X kit médico ×' + (P2.kit ? P2.kit.med : 0) + '  E veículo' + (P2.heal ? '   · CURANDO…' : '') + (P2.inVeh ? '   · NO BLINDADO' : ''); }
+    const P2 = G.player; if (P2 && P2.gren) { const g = BC.GREN[P2.grSel]; $('gren').textContent = P2.gren[P2.grSel] > 0 ? g.short + ' ×' + P2.gren[P2.grSel] + '  [G] lançar · [H] trocar   ' + Object.keys(P2.gren).map((k) => BC.GREN[k].short + ':' + P2.gren[k]).join(' ') : 'sem granadas'; $('stance').textContent = P2.prone > 0.5 ? 'DEITADO' : P2.crouch > 0.5 ? 'AGACHADO' : ''; $('gren').textContent += '   V bandagem ×' + (P2.kit ? P2.kit.band : 0) + '  X kit médico ×' + (P2.kit ? P2.kit.med : 0) + '  E veículo' + (P2.drones ? '   5 recon×' + P2.drones.recon + '  6 bombardeiro×' + P2.drones.bomber + '  7 kamikaze×' + P2.drones.kamikaze : '') + (P2.heal ? '   · CURANDO…' : '') + (P2.inVeh ? '   · NO BLINDADO' : ''); }
     $('tefill').style.width = (P.tension || 0).toFixed(0) + '%'; $('tefill').style.background = P.tension > 70 ? '#ff5a4a' : P.tension > 40 ? '#e8a84a' : '#d8d86a'; $('mofill').style.width = (P.morale || 0).toFixed(0) + '%';
     $('hpfill').style.width = P.hp + '%'; $('hpfill').style.background = P.hp < 30 ? '#ff5a4a' : P.hp < 60 ? '#e8c86a' : '#9ad79a'; $('hpn').textContent = Math.ceil(P.hp);
     const w = P.w[P.cur], a = w.mag + '|' + w.reserve + '|' + (P.rl ? 1 : 0); if (a !== lastAmmo) { lastAmmo = a; $('am').textContent = w.mag; $('ar').textContent = '/ ' + w.reserve; $('am').style.color = w.mag <= Math.ceil(w.spec.mag * 0.25) ? '#ff8a6a' : ''; }

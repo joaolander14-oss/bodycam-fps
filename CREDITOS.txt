@@ -47,3 +47,9 @@ Pichuliru (Poly Pizza, CC0): Red Dot, Reflex, Holographic, Magnified (ACOG), Sco
 
 --- Texturas fotográficas (CC0) ---
 ambientCG (https://ambientcg.com, CC0): Ground037, Grass004, Ground102, Ground048, Ground054, Ground080, Ground097, Snow006, Snow013, Ground109, Gravel043, Gravel041, Rock064, Rock051, Rock029, Asphalt033, Concrete049, Concrete048, Bricks097, PaintedPlaster017, Planks040, Wood051, Planks037A, DiamondPlate009, Metal064, RoofingTiles014A, CorrugatedSteel009, Fabric066, Rock030, Rock035, Moss001, ScatteredLeaves009.
+
+--- Modelos 3D de drones (CC BY 3.0, Poly Pizza) ---
+"Drone" por NateGazzard — https://poly.pizza/m/DNbUoMtG3H
+"Stinger" por Aaron Clifford — https://poly.pizza/m/6CUQX98vha4
+"Little drone" por Nick Olson — https://poly.pizza/m/dJ9mjQQqDQJ
+Licença: https://creativecommons.org/licenses/by/3.0/
