@@ -79,6 +79,7 @@
     this.agentIdx = (rng() * BC.AGENTS.length) | 0; this.model = BC.makeChar(G.teamDefs[this.team], this.wid, this.agentIdx);
     G.scene.add(this.model.root); this.model.root.rotation.set(0, this.yaw, 0);
     if (rng() < 0.12) { const L = BC.WEAPONS.filter((x) => x.cls === 'launcher'); if (L.length) { this.atSpec = L[(rng() * L.length) | 0]; this.atAmmo = 2; } }
+    this.model.api.kneel = this.idx & 1;
     if (BC.Vehicles) BC.Vehicles.tryBoard(this);
   };
 
@@ -333,7 +334,7 @@
     this.stepAcc = (this.stepAcc || 0) + sp * dt;
     if (this.stepAcc > 1.9) {
       this.stepAcc = 0; const P = G.player, d = Math.hypot(P.x - this.x, P.z - this.z);
-      if (d < 24 && sp > 2) BC.Audio.step(this.inWater ? 'water' : w.surf, 0.7, d, G.panTo(this.x, this.z));
+      if (d < 24 && sp > 2) BC.Audio.step(BC.stepSurf(this, this.inWater), this.crouch > 0.5 ? 0.35 : 0.7, d, G.panTo(this.x, this.z));
     }
   };
 

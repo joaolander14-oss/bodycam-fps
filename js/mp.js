@@ -145,7 +145,7 @@
         const pd = Math.hypot(G.player.x - this.x, G.player.z - this.z); m.root.visible = pd < 280;
         m.root.position.set(this.x, this.y + m.api.lift, this.z); m.root.rotation.set(0, this.yaw, 0);
         m.pose(this.walkPh, Math.min(1, sp / 3.5) * 0.75, this.stn, G.time, BC.clamp(this.pitch, -0.5, 0.5), sp > 0.3 ? 1 : 0);
-        this.stepAcc = (this.stepAcc || 0) + sp * dt; if (this.stepAcc > 1.9) { this.stepAcc = 0; const d = pd; if (d < 24 && sp > 2) BC.Audio.step(G.world.surf, 0.7, d, G.panTo(this.x, this.z)); }
+        this.stepAcc = (this.stepAcc || 0) + sp * dt; if (this.stepAcc > 1.9) { this.stepAcc = 0; const d = pd; if (d < 24 && sp > 2) BC.Audio.step(BC.stepSurf(this), 0.7, d, G.panTo(this.x, this.z)); }
       } else {
         if (this.wasAlive) { this.deadT = 0; G.fx.pool(this.x, this.y, this.z, 60); G.fx.blood({ x: this.x, y: this.y + 1.2, z: this.z }, { x: Math.sin(this.yaw), y: 0, z: Math.cos(this.yaw) }, 'body', G.world, 70); }
         this.deadT += dt; const u = Math.min(1, this.deadT / 0.7), e = u * u * (3 - 2 * u), fx = Math.sin(this.yaw), fz = Math.cos(this.yaw);

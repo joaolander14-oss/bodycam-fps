@@ -155,10 +155,10 @@
   };
   // altura do chão para um ator em (x,z) com pés em feetY: terreno ou topo de caixa baixa (degrau)
   W.groundAt = function (x, z, feetY, step) {
-    let h = this.heightAt(x, z); this._gBox = false;
+    let h = this.heightAt(x, z); this._gBox = false; this._gTag = null;
     const c = this.cells[Math.floor((z + this.half) / CS) * this.gw + Math.floor((x + this.half) / CS)];
     if (c) for (const o of c) {
-      if (o.k === 'b' && x > o.x0 - 0.05 && x < o.x1 + 0.05 && z > o.z0 - 0.05 && z < o.z1 + 0.05 && o.y1 <= feetY + step && o.y1 > h) { h = o.y1; this._gBox = true; }
+      if (o.k === 'b' && x > o.x0 - 0.05 && x < o.x1 + 0.05 && z > o.z0 - 0.05 && z < o.z1 + 0.05 && o.y1 <= feetY + step && o.y1 > h) { h = o.y1; this._gBox = true; this._gTag = o.tag; }
     }
     return h;
   };

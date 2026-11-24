@@ -350,15 +350,15 @@
     const jump = keys.Space && P.onGround && P.stn < 0.3;
     if (P.inVeh) { P.vx = P.vz = 0; P.onGround = true; } else BC.moveActor(P, wxw, wzw, moving ? speed : 0, dt, w, jump);
     if (jump) keys.Space = false;
-    if (P.landed > 4) { P.kick += 0.5; BC.Audio.step(w.surf, 1.2, 0, 0); }
+    if (P.landed > 4) { P.kick += 0.5; BC.Audio.step(BC.stepSurf(P, P.inWater), Math.min(1.5, 0.8 + P.landed * 0.05), 0, 0, 0.8); }
     P.h = 1.78 - 0.53 * P.crouch - 0.75 * P.prone; P.sneak = P.stn > 0.6 && Math.hypot(P.vx, P.vz) < 2;
     const hs = Math.hypot(P.vx, P.vz);
     // altura da câmera (peito) suavizada
     const E3 = (x) => x * x * (3 - 2 * x); P.eyeY = 1.4 - 0.45 * E3(P.crouch) - 0.67 * E3(P.prone);
     // balanço da câmera de peito
-    P.bob += hs * dt * (sprinting ? 1.5 : 1.7);
-    P.stepAcc += hs * dt;
-    if (P.onGround && P.stepAcc > (sprinting ? 2.1 : 1.6) && hs > 0.6) { P.stepAcc = 0; BC.Audio.step(P.inWater ? 'water' : w.surf, P.crouch > 0.5 ? 0.35 : sprinting ? 1.0 : 0.7, 0, 0); }
+    P.bob += hs * dt * (sprinting ? 1.5 : 1.96) * (1 - 0.18 * P.crouch);
+    const stp = Math.floor(P.bob / Math.PI); if (P.lastStep === undefined) P.lastStep = stp;
+    if (stp !== P.lastStep) { P.lastStep = stp; if (P.onGround && hs > 0.6 && !P.inVeh) BC.Audio.step(BC.stepSurf(P, P.inWater), P.crouch > 0.5 ? 0.3 : P.prone > 0.5 ? 0.18 : sprinting ? 1.0 : 0.7, 0, 0); }
     // vida regenera devagar
     
     P.hitFlash = Math.max(0, P.hitFlash - dt * 2.5);
@@ -419,18 +419,31 @@
     const adsV = BC.deg(2 * Math.atan(Math.tan(BC.rad(hipV) / 2) / wst.zoom));
     const fov = BC.lerp(hipV, adsV, P.adsT); G.curFov = fov; G.hipV = hipV;
     camera.fov = fov; camera.updateProjectionMatrix();
-    const hs = Math.hypot(P.vx, P.vz), mv = Math.min(1.5, hs / WALK), ads = P.adsT, sprint = P.sprintT;
+    const hs = Math.hypot(P.vx, P.vz), ads = P.adsT, sprint = P.sprintT;
+    // ---- estado de locomoção da câmera de peito: amplitude suave, passada com mola, aceleração, inclinação do terreno, pouso
+    const C = G.cam || (G.cam = { amp: 0, kv: 0, ky: 0, ax: 0, pf: 0, lat: 0, py: P.y, vy: 0, slope: 0, yr: 0, pyaw: P.yaw, last: 0, sSide: 1 });
+    const lat0 = P.vx * Math.cos(P.yaw) - P.vz * Math.sin(P.yaw), fwd0 = -(P.vx * Math.sin(P.yaw) + P.vz * Math.cos(P.yaw)), idt = 1 / Math.max(dt, 1e-3), mvT = Math.min(1.5, hs / WALK);
+    C.amp += (mvT - C.amp) * Math.min(1, (mvT > C.amp ? 5 : 3) * dt);
+    C.ax += ((fwd0 - C.pf) * idt - C.ax) * Math.min(1, 10 * dt); C.pf = fwd0; C.lat += (lat0 - C.lat) * Math.min(1, 6 * dt);
+    C.vy += ((P.y - C.py) * idt - C.vy) * Math.min(1, 6 * dt); C.py = P.y; C.yr += (((P.yaw - C.pyaw) * idt) - C.yr) * Math.min(1, 8 * dt); C.pyaw = P.yaw;
+    C.slope += ((hs > 0.5 ? BC.clamp(C.vy / Math.max(hs, 0.5), -1, 1) : 0) - C.slope) * Math.min(1, 3 * dt);
+    const stepN = Math.floor(P.bob / Math.PI); if (stepN !== C.last) { C.last = stepN; if (P.onGround && hs > 0.6) { C.kv -= (0.42 + 0.3 * sprint) * C.amp * (1 - 0.6 * ads) * (1 - 0.35 * P.crouch); C.sSide = -C.sSide; } }
+    if (P.landed > 0) C.kv -= Math.min(2.8, P.landed * 0.2);
+    C.kv += (-170 * C.ky - 15 * C.kv) * Math.min(dt, 0.033); C.ky += C.kv * Math.min(dt, 0.033);
+    const mv = C.amp;
     const tn = Math.pow((P.tension || 0) / 100, 1.15), tt = G.time;
     P.trY = (Math.sin(tt * 7.3) * 0.55 + Math.sin(tt * 13.1 + 1) * 0.3 + Math.sin(tt * 23.7 + 2) * 0.15) * 0.013 * tn; P.trP = (Math.sin(tt * 6.1 + 0.5) * 0.5 + Math.sin(tt * 11.9 + 3) * 0.35 + Math.sin(tt * 19.3) * 0.15) * 0.011 * tn;
-    const bobA = (0.035 + 0.04 * sprint) * mv * (1 - 0.85 * ads) * (1 + tn * 1.1), ph = P.bob;
+    const bobA = (0.03 + 0.04 * sprint) * mv * (1 - 0.85 * ads) * (1 + tn * 1.1) * (1 + 0.5 * Math.min(1, Math.abs(C.slope)) + 0.3 * P.crouch), ph = P.bob;
     let ex = P.x + Math.cos(P.yaw) * Math.sin(ph) * bobA * 0.8, ez = P.z - Math.sin(P.yaw) * Math.sin(ph) * bobA * 0.8;
-    let ey = P.y + P.eyeY + (0.5 - 0.5 * Math.cos(2 * ph)) * bobA * 1.3 - Math.pow(Math.max(0, Math.cos(2 * ph)), 6) * bobA * 0.35 - (P.fall * (P.eyeY - 0.25)) + (G.time * 0.0);
+    let ey = P.y + P.eyeY + C.ky * (1 - 0.5 * ads) + (0.5 - 0.5 * Math.cos(2 * ph)) * bobA * 0.85 - (P.fall * (P.eyeY - 0.25)) + (G.time * 0.0);
     ey += Math.sin(G.time * 1.3) * 0.004 * (1 - ads); // respiração
     if (G.shake > 0.01) { ex += (Math.random() - 0.5) * G.shake * 0.12; ey += (Math.random() - 0.5) * G.shake * 0.12; ez += (Math.random() - 0.5) * G.shake * 0.12; }
     const sk = tn * 0.012; ex += (Math.sin(tt * 17.1) + Math.sin(tt * 9.3)) * sk; ey += (Math.sin(tt * 14.7 + 1) + Math.sin(tt * 8.1)) * sk; ez += (Math.sin(tt * 15.3 + 2) + Math.sin(tt * 10.7)) * sk;
     camera.position.set(ex, ey, ez);
     let pitch = P.pitch + Math.cos(2 * ph) * 0.007 * mv * (1 - ads) + P.rc.p - BC.clamp((P.stnVel || 0) * 0.06, -0.12, 0.12), yaw = P.yaw + P.rc.y, roll = Math.sin(ph) * 0.012 * mv * (1 - ads) + Math.sin(tt * 2.3) * 0.03 * tn + Math.sin(tt * 11) * 0.006 * tn + P.fall * 0.9 + Math.sin(ph * 0.5) * 0.03 * P.prone * mv + (P.stnVel || 0) * 0.015;
     pitch += P.fall * 0.5;
+    pitch += BC.clamp(-C.ax * 0.0006, -0.03, 0.03) * (1 - 0.7 * ads) + BC.clamp(C.slope * 0.05, -0.06, 0.06) + C.ky * 0.35 * (1 - ads);
+    roll += BC.clamp(-C.lat * 0.0045 - C.yr * 0.003, -0.06, 0.06) * (1 - 0.6 * ads) + C.sSide * C.amp * 0.0025 * (1 - ads);
     _e.set(BC.clamp(pitch, -1.5, 1.5), yaw, roll, 'YXZ'); camera.quaternion.setFromEuler(_e);
     // nascer/pôr do sol, sol segue o jogador (sombras)
     sun.position.set(P.x + sunDir.x * 90, P.y + sunDir.y * 90, P.z + sunDir.z * 90); sun.target.position.set(P.x, P.y, P.z); sun.target.updateMatrixWorld();
@@ -447,7 +460,10 @@
     // sprint: arma baixa e inclinada
     px += 0.07 * sprint; py += -0.09 * sprint; pz += 0.02 * sprint; rx += 0.55 * sprint; ry += 0.55 * sprint; rz += -0.2 * sprint;
     // balanço ao andar
-    const b2 = mv * (1 - 0.75 * ads) * (1 + sprint * 0.8);
+    const b2 = mv * (1 - 0.75 * ads) * (1 + sprint * 0.8) * (1 + 0.5 * Math.min(1, Math.abs(C.slope))) * (1 - 0.3 * P.crouch);
+    // subindo/descendo: a arma atrasa, inclina com o terreno e sente cada passada
+    vmState.slopeRx = (vmState.slopeRx || 0) + ((-C.slope * 0.55) - (vmState.slopeRx || 0)) * Math.min(1, 4 * dt);
+    rx += vmState.slopeRx * (1 - 0.6 * ads) + C.vy * 0.012 * (1 - 0.7 * ads) - C.kv * 0.012 * (1 - 0.6 * ads); py += -C.vy * 0.005 * (1 - 0.7 * ads) + C.ky * 0.6 * (1 - 0.5 * ads); pz += C.slope * 0.02 * (1 - ads);
     px += Math.sin(ph) * 0.012 * b2; py += (0.5 + 0.5 * Math.cos(2 * ph)) * 0.014 * b2 - 0.006 * b2; rz += Math.sin(ph) * 0.02 * b2;
     // inércia do corpo: a arma atrasa ao andar de lado/frente e balança na respiração
     const lat = P.vx * Math.cos(P.yaw) - P.vz * Math.sin(P.yaw), fwd = -(P.vx * Math.sin(P.yaw) + P.vz * Math.cos(P.yaw));

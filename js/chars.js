@@ -230,11 +230,11 @@
     const E = (x) => x * x * (3 - 2 * x), api = { lift: 0, lunge: 0 };
     const pose = (ph, amp, stn, t, aim, crawl) => {
       aim = aim || 0; const c = Math.min(stn, 1), pr = Math.max(0, stn - 1), ce = E(c), pe = E(pr), s = Math.sin(ph), cs = Math.cos(ph), a = amp * 0.85 * (1 - pe), cc = ce * (1 - pe);
-      const wk = amp * (1 - pe) * (1 - cc), fl = 0.1 * wk; L.thigh.rotation.x = s * a + 0.08 * wk + 1.15 * cc - 0.1 * pe + Math.sin(ph * 0.8) * 0.28 * pe * (crawl || 0); R.thigh.rotation.x = -s * a + 0.08 * wk + 1.15 * cc - 0.1 * pe - Math.sin(ph * 0.8) * 0.28 * pe * (crawl || 0);
-      L.knee.rotation.x = -(Math.max(0, cs) * a * 1.25) - fl * (1 - Math.abs(s)) - Math.max(0, -s) * a * 0.35 - 2.0 * cc - 0.05 * pe - Math.max(0, Math.sin(ph * 0.8)) * 0.5 * pe * (crawl || 0); R.knee.rotation.x = -(Math.max(0, -cs) * a * 1.25) - fl * (1 - Math.abs(s)) - Math.max(0, s) * a * 0.35 - 2.0 * cc - 0.05 * pe - Math.max(0, -Math.sin(ph * 0.8)) * 0.5 * pe * (crawl || 0);
-      L.thigh.position.y = R.thigh.position.y = 0.94 - 0.42 * cc; L.thigh.position.z = R.thigh.position.z = -0.04 * cc;
-      up.position.y = PV - 0.04 - 0.42 * cc + Math.cos(2 * ph) * 0.016 * amp * (1 - pe) + Math.sin(t * 1.6) * (0.003 + 0.004 * pe); up.position.z = -0.1 * cc; up.position.x = s * 0.018 * wk; up.rotation.z = -s * 0.04 * wk; body.rotation.z = 0;
-      up.rotation.x = 0.34 * cc + aim * (1 - pe) - 0.22 * pe; up.rotation.y = -s * 0.06 * amp * (1 - pe) * (1 - cc) + Math.sin(ph * 0.8) * 0.1 * pe * (crawl || 0);
+      const wk = amp * (1 - pe) * (1 - cc), fl = 0.1 * wk, kn = (api.kneel || 0) * (1 - Math.min(1, amp / 0.4)) * (1 - pe); L.thigh.rotation.z = -0.09 * cc * (1 - pe); R.thigh.rotation.z = 0.09 * cc * (1 - pe); L.thigh.rotation.x = s * a + 0.08 * wk + (1.15 + 0.35 * kn) * cc - 0.1 * pe + Math.sin(ph * 0.8) * 0.28 * pe * (crawl || 0); R.thigh.rotation.x = -s * a + 0.08 * wk + (1.15 - 0.9 * kn) * cc - 0.1 * pe - Math.sin(ph * 0.8) * 0.28 * pe * (crawl || 0);
+      L.knee.rotation.x = -(Math.max(0, cs) * a * 1.25) - fl * (1 - Math.abs(s)) - Math.max(0, -s) * a * 0.35 - (2.0 - 0.5 * kn) * cc - 0.05 * pe - Math.max(0, Math.sin(ph * 0.8)) * 0.5 * pe * (crawl || 0); R.knee.rotation.x = -(Math.max(0, -cs) * a * 1.25) - fl * (1 - Math.abs(s)) - Math.max(0, s) * a * 0.35 - (2.0 + 0.15 * kn) * cc - 0.05 * pe - Math.max(0, -Math.sin(ph * 0.8)) * 0.5 * pe * (crawl || 0);
+      L.thigh.position.y = R.thigh.position.y = 0.94 - (0.42 + 0.03 * kn) * cc; L.thigh.position.z = R.thigh.position.z = -0.04 * cc;
+      up.position.y = PV - 0.04 - (0.42 + 0.03 * kn) * cc + Math.cos(2 * ph) * 0.016 * amp * (1 - pe) + Math.sin(t * 1.6) * (0.003 + 0.004 * pe); up.position.z = -0.1 * cc; up.position.x = s * 0.018 * wk; up.rotation.z = -s * 0.04 * wk; body.rotation.z = 0;
+      up.rotation.x = (0.34 - 0.05 * kn) * cc + aim * (1 - pe) - 0.22 * pe; up.rotation.y = -s * 0.06 * amp * (1 - pe) * (1 - cc) + Math.sin(ph * 0.8) * 0.1 * pe * (crawl || 0);
       armsG.rotation.x = (Math.PI / 2) * pe + aim * pe - 0.35 * cc * 0 ; armsG.rotation.z = Math.sin(ph * 0.8) * 0.12 * pe * (crawl || 0);
       head.rotation.z = s * 0.035 * wk; head.rotation.x = 1.3 * pe - aim * 0.35 * (1 - pe) - 0.15 * cc;
       body.rotation.x = -(Math.PI / 2) * pe; body.position.y = 0.17 * pe * 0 ; body.position.z = -0.32 * Math.sin(Math.PI * pr) * (pr < 1 ? 1 : 0);
