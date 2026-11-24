@@ -116,7 +116,7 @@
       spreadHip: shell ? (id === 'coach' ? 2.6 : 2.4) : spreadHip, spreadAds: shell ? 1.9 : spreadAds, spreadShot: shell ? 0 : cls === 'sniper' ? 0.2 : auto ? 0.06 : 0.16, spreadMax: shell ? 2.4 : 1.5, scopeDefault: o.scope, spreadMove: cls === 'sniper' ? 1.6 : cls === 'shotgun' ? 0.6 : 0.8,
       recoil: pat(auto ? 40 : 10, rec, 0.25 + rec * 0.05, 0.6 + (id.length % 5) * 0.12, (id.charCodeAt(0) % 3 - 1) * 0.4), recoilKick: Math.min(0.13, 0.025 + rec * 0.012),
       adsZoom: o.zoom || (cls === 'pistol' || cls === 'revolver' ? 1.15 : 1.25), scope: !!o.zoom, snd: sp[0], sndRate: sp[1] ? +sp[1] : 1, model, sup: !!o.sup, rocket: o.rocket, ap: !!(o.ap || C.ap), variantOf: o.var, mod: o.mod,
-      hip: HIP[cls], ads: o.zoom ? [0, 0, -0.1] : cls === 'pistol' || cls === 'revolver' ? [0, -0.007, -0.3] : [0, -0.01, -0.34]
+      hip: HIP[cls], ads: o.zoom ? [0, 0, -0.21] : cls === 'pistol' || cls === 'revolver' ? [0, -0.007, -0.3] : [0, -0.01, -0.34]
     };
     if (cls === 'revolver') w.len = len * 1.3; else w.len = len; w.pumpAction = ['rem870', 'moss500', 'ithaca37', 'rem870t', 'win1300'].includes(id);
     return w;

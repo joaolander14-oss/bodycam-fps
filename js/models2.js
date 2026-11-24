@@ -98,16 +98,18 @@
   };
   // mira montada no topo da arma. type: reddot | holo | acog | mid | long
   BC.SCOPES = {
-    iron: { name: 'Miras de ferro', zoom: 0 }, reddot: { name: 'Red Dot (1×)', zoom: 1.15, h: 0.04, ret: 'dot' }, holo: { name: 'Holográfica EOTech (1×)', zoom: 1.2, h: 0.042, ret: 'holo' },
+    iron: { name: 'Miras de ferro', zoom: 0 }, reddot: { name: 'Red Dot (1×)', zoom: 1.15, h: 0.04, ret: 'dot', kind: 'dot' }, holo: { name: 'Holográfica EOTech (1×)', zoom: 1.2, h: 0.042, ret: 'holo', kind: 'dot', color: '#ff3a3a' },
+    micro: { name: 'Micro Red Dot (1×)', zoom: 1.1, h: 0.034, ret: 'dot', kind: 'dot' }, reflex: { name: 'Reflex verde (1×)', zoom: 1.1, h: 0.04, ret: 'dot', kind: 'dot', color: '#3dff6a' },
+    prism: { name: 'Prismática 3×', zoom: 3, h: 0.05, ret: 'chev', len: 0.13 }, lpvo: { name: 'LPVO 4×', zoom: 4, h: 0.055, ret: 'cross', len: 0.2 }, dmr: { name: 'Luneta DMR 8×', zoom: 8, h: 0.058, ret: 'mil', len: 0.33 },
+    thermal: { name: 'Térmica 4×', zoom: 4, h: 0.058, ret: 'cross', len: 0.26, thermal: true }, nv: { name: 'Visão noturna 5×', zoom: 5, h: 0.058, ret: 'cross', len: 0.26, nv: true },
     acog: { name: 'ACOG 4×', zoom: 4, h: 0.05, ret: 'chev', len: 0.15 }, mid: { name: 'Luneta 6×', zoom: 6, h: 0.055, ret: 'cross', len: 0.27 }, long: { name: 'Luneta 10×', zoom: 10, h: 0.06, ret: 'mil', len: 0.38 }
   };
   BC.makeScope = function (type, G, cls) {
     const S = BC.SCOPES[type]; if (!S || type === 'iron') return null; const grp = new T.Group(); const zc = (cls === 'sniper' ? -0.06 : -0.03);
-    if (type === 'reddot' || type === 'holo') {
-      const hgt = S.h, parts = [BC.pbox(0.04, 0.014, 0.07, 0, 0.007, zc, 0x1b1c1f), BC.pbox(0.036, hgt - 0.01, 0.01, 0, hgt / 2 + 0.004, zc + 0.03, 0x232427), BC.pbox(0.006, hgt - 0.01, 0.06, 0.018, hgt / 2 + 0.004, zc, 0x232427), BC.pbox(0.006, hgt - 0.01, 0.06, -0.018, hgt / 2 + 0.004, zc, 0x232427), BC.pbox(0.04, 0.008, 0.07, 0, hgt + 0.004, zc, 0x232427)];
-      if (type === 'holo') parts.push(BC.pbox(0.036, hgt - 0.014, 0.004, 0, hgt / 2 + 0.006, zc - 0.034, 0x1a1b1e));
+    if (S.kind === 'dot') {
+      const hgt = S.h, parts = [BC.pbox(0.04, 0.014, 0.07, 0, 0.007, zc, 0x1b1c1f), BC.pbox(0.006, hgt - 0.01, 0.06, 0.018, hgt / 2 + 0.004, zc, 0x232427), BC.pbox(0.006, hgt - 0.01, 0.06, -0.018, hgt / 2 + 0.004, zc, 0x232427), BC.pbox(0.04, 0.008, 0.07, 0, hgt + 0.004, zc, 0x232427)];
       grp.add(new T.Mesh(gm(parts), new T.MeshStandardMaterial({ vertexColors: true, roughness: 0.5, metalness: 0.35 })));
-      const glass = new T.Mesh(new T.PlaneGeometry(0.032, hgt - 0.014), new T.MeshBasicMaterial({ color: 0x7aa0ff, transparent: true, opacity: 0.18, side: T.DoubleSide })); glass.position.set(0, hgt / 2 + 0.006, zc - 0.03); grp.add(glass);
+      const glass = new T.Mesh(new T.PlaneGeometry(0.032, hgt - 0.014), new T.MeshBasicMaterial({ color: 0x7aa0ff, transparent: true, opacity: 0.18, side: T.DoubleSide })); glass.position.set(0, hgt / 2 + 0.006, zc - 0.03); grp.add(glass); grp.userData.win = { x: 0, y: hgt / 2 + 0.006, z: zc - 0.03, w: 0.032, h: hgt - 0.014 };
     } else {
       const L = S.len, d = S.h * 0.9 / 2;
       if (scopeBase) { const g = scopeBase.clone(true), sx = L / scopeBase.userData.len; g.scale.set(sx, sx, sx); g.position.set(0, d + 0.012, zc); grp.add(g); }

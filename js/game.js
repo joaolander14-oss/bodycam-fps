@@ -41,7 +41,7 @@
       fragmentShader: 'uniform vec3 top,hor,sunCol,sunDir; varying vec3 vp; void main(){ float h=clamp(vp.y,0.0,1.0); vec3 c=mix(hor,top,pow(h,0.55)); float s=max(dot(normalize(vp),normalize(sunDir)),0.0); c+=sunCol*(pow(s,600.0)*1.6+pow(s,8.0)*0.12); gl_FragColor=vec4(c,1.0); }'
     }));
     sky.renderOrder = -10; sky.frustumCulled = false; scene.add(sky);
-    post = G.post = new BC.Post(renderer); fx = G.fx = new BC.Fx(scene); BC.Gren.init(scene);
+    post = G.post = new BC.Post(renderer); BC.Optics.init(renderer); fx = G.fx = new BC.Fx(scene); BC.Gren.init(scene);
     // tudo que dá clarão (tiros inimigos, granadas, explosões) causa um pequeno chiado onde aparece na tela
     const _fl = fx.flash.bind(fx);
     fx.flash = function (p, sz) {
@@ -106,7 +106,7 @@
       const mg = BC.MODELS[s.id] && BC.MODELS[s.id].G, builtIn = !!(s.scope || (mg && mg.scopeType)), sel = (S.scopes && S.scopes[s.id]) || 'iron';
       let type = builtIn ? ((mg && mg.scopeType) || 'builtin') : sel, zoom = s.adsZoom;
       if (type !== 'builtin' && BC.SCOPES[type] && type !== 'iron') zoom = BC.SCOPES[type].zoom; else if (builtIn && sel !== 'iron' && BC.SCOPES[sel]) { zoom = BC.SCOPES[sel].zoom; type = sel; }
-      return { spec: s, mag: s.mag, reserve: s.reserve, mode: s.auto ? 'auto' : 'semi', clock: new BC.FireClock(s.rpm), scopeType: type, zoom, scoped: zoom >= 2.9, dot: type === 'reddot' || type === 'holo', extra: !builtIn && type !== 'iron' };
+      return { spec: s, mag: s.mag, reserve: s.reserve, mode: s.auto ? 'auto' : 'semi', clock: new BC.FireClock(s.rpm), scopeType: type, zoom, scoped: zoom >= 2.9, dot: !!(BC.SCOPES[type] && BC.SCOPES[type].kind === 'dot'), extra: !builtIn && type !== 'iron' };
     });
     for (const w of P.w) w.clock.next = -9;
     // modelos 1ª pessoa
@@ -118,6 +118,7 @@
       const wst = P.w[vm.length]; m.wst = wst;
       if (wst.extra) { m.scopeMesh = BC.makeScope(wst.scopeType, m.G, s.cls); if (m.scopeMesh) { m.root.add(m.scopeMesh); wst.scopeH = BC.SCOPES[wst.scopeType].h || 0.05; } }
       else if (m.G.scopeType && BC.SCOPES[m.G.scopeType]) wst.scopeH = BC.SCOPES[m.G.scopeType].h; m.root.traverse((o) => { o.castShadow = false; });
+      BC.Optics.build(m, wst, s);
       vm.push(m);
     });
     // atores
@@ -417,7 +418,8 @@
     const P = G.player, s = G.settings;
     const wst = P.w[P.cur], spec = wst.spec, hipV = BC.hFovToV(s.fov, G.aspect);
     const adsV = BC.deg(2 * Math.atan(Math.tan(BC.rad(hipV) / 2) / wst.zoom));
-    const fov = BC.lerp(hipV, adsV, P.adsT); G.curFov = fov; G.hipV = hipV;
+    const viewZ = wst.scoped ? 1.25 : wst.zoom, adsVV = BC.deg(2 * Math.atan(Math.tan(BC.rad(hipV) / 2) / viewZ)); // lunetas: o aumento fica dentro da lente, não na tela toda
+    const fov = BC.lerp(hipV, adsVV, P.adsT); G.curFov = BC.lerp(hipV, adsV, P.adsT); G.hipV = hipV;
     camera.fov = fov; camera.updateProjectionMatrix();
     const hs = Math.hypot(P.vx, P.vz), ads = P.adsT, sprint = P.sprintT;
     // ---- estado de locomoção da câmera de peito: amplitude suave, passada com mola, aceleração, inclinação do terreno, pouso
@@ -452,9 +454,9 @@
     // viewmodel
     const m = vm[P.cur]; if (!m) return;
     const scoped = wst.scoped && ads > 0.92;
-    vmGroup.visible = P.alive && !(P.fall > 0.3) && !scoped; BC.UI.setScope(scoped && P.alive, wst.scopeType); BC.UI.setDot(wst.dot && ads > 0.8 && P.alive, wst.scopeType);
-    if (m.scopeMesh) m.scopeMesh.visible = !(wst.dot && ads > 0.5);
-    const hip = spec.hip, adp = [spec.ads[0], spec.ads[1] - (wst.scopeH && !wst.scoped ? wst.scopeH * 0.9 : 0), spec.ads[2]];
+    vmGroup.visible = P.alive && !(P.fall > 0.3); BC.UI.setScope(false); BC.UI.setDot(false);
+    if (m.scopeMesh) m.scopeMesh.visible = true;
+    const hip = spec.hip, adp = [spec.ads[0], spec.ads[1] - (wst.dot ? Math.max(0.008, wst.scopeH / 2 - 0.004) : wst.scopeH && !wst.scoped ? wst.scopeH * 0.9 : 0), spec.ads[2]];
     let px = BC.lerp(hip[0], adp[0], ads), py = BC.lerp(hip[1], adp[1], ads), pz = BC.lerp(hip[2], adp[2], ads);
     let rx = 0, ry = 0, rz = 0;
     // sprint: arma baixa e inclinada
@@ -508,7 +510,7 @@
     if (m.parts.pump) { const pk = P.pumpT > 0 ? Math.sin((1 - P.pumpT / 0.55) * Math.PI) : 0; m.parts.pump.position.z = pk * 0.1; handZ += pk * 0.1; }
     if (m.parts.slide && !P.rl) { const empty = P.w[P.cur].mag <= 0; m.parts.slide.position.z = (P.slideK || 0) * 0.035 + (empty ? 0.03 : 0); }
     hand.position.set(handX, handY, handZ);
-    m.root.position.set(px, py, pz); m.root.rotation.set(rx, ry, rz);
+    m.root.position.set(px, py, pz); m.root.rotation.set(rx, ry, rz); BC.Optics.update(m, wst, ads, camera, G.time);
     // pós
     const scope = wst.scoped ? ads : 0;
     post.k = BC.lerp(0.2, 0.05, ads * 0.7 + scope * 0.3); post.zoom = BC.lerp(0.87, 0.97, ads * 0.7 + scope * 0.3);
@@ -580,6 +582,7 @@
   G.renderFrame = function (dt) {
     if (!G.player) return;
     updateCamera(dt || 0.016);
+    BC.Optics.render(scene);
     post.render(scene, camera, vm.length ? vmScene : null, vmCam, { time: G.time, glitch: G.glitch + (G.player.alive ? 0 : 0.15) + Math.min(1.1, (G.blind || 0) * 0.4), damage: G.player.hitFlash * 0.5 + (G.player.hp < 30 ? (30 - G.player.hp) / 80 : 0), dead: BC.smooth(0, 1, G.player.fall) * 0.85, lg: G.lg, flash: G.flashScreen * 1.5 + Math.min(1.6, (G.blind || 0) * 0.55) });
     BC.UI.frame(dt || 0.016);
   };

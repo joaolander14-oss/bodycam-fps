@@ -29,6 +29,7 @@
       return a;
     }),
     bush: () => G('bush', () => [SP(0.9, 0, 0.5, 0, 0x3b6a2d, 0.7), SP(0.6, 0.7, 0.4, 0.3, 0x4a7a35, 0.7)]),
+    wheat: () => G('wheat', () => [CO(0.07, 1.4, 0, 0.7, 0, 0xc9a850), CO(0.06, 1.25, 0.16, 0.62, 0.07, 0xb89a44), CO(0.06, 1.15, -0.14, 0.58, -0.09, 0xd4b45a), CO(0.05, 1.3, 0.05, 0.65, -0.18, 0xc2a24c)]),
     reed: () => G('reed', () => [CO(0.07, 1.6, 0, 0.8, 0, 0x7a8a45), CO(0.06, 1.3, 0.12, 0.65, 0.05, 0x6d7d3e)]),
     rock: () => G('rock', () => [{ geo: new T.DodecahedronGeometry(1, 0), c: 0x8a8b88, m: new T.Matrix4().makeScale(1, 0.75, 0.9) }]),
     mound: () => G('mound', () => [SP(1, 0, 0, 0, 0xffffff, 0.35)])
@@ -557,7 +558,113 @@
     }
   };
 
-  BC.MAP_ORDER = ['snow', 'forest', 'trench', 'city', 'swamp', 'desert', 'jungle', 'mountain', 'industrial', 'village', 'airbase', 'coast'];
+
+  // =================== CÂNION DO RIO ===================
+  BC.maps.canyon = {
+    id: 'canyon', name: 'Cânion do Rio', desc: 'Paredões vermelhos, um rio sinuoso no meio com pontes de madeira e rochas enormes. Quem controla as pontes controla o mapa.',
+    sw: ['#c8744a', '#5a3326'], ambient: 'desert', weather: 'dust', surf: 'dirt',
+    sky: { top: 0x6a9ad0, horizon: 0xe6c8a4 }, fog: { color: 0xd8b090, density: 0.007 },
+    sun: { color: 0xffe4b8, i: 1.15, dir: [-0.5, 0.8, 0.3] }, hemi: { sky: 0xf0d8c0, ground: 0x9a5a3a, i: 0.9 }, seed: 1313,
+    build(W, rng) {
+      const H = S.H; W.waterY = -0.45; const hh = hillsFn(rng, cnt(3) + 2, 22, 40, 2.5, 6);
+      const riverX = (z) => 7 * Math.sin(z * 0.035) + 3 * Math.sin(z * 0.09 + 1);
+      W.makeTerrain((x, z) => {
+        const lane = sm(H - 46, H - 24, Math.abs(z)), wall = sm(28, 54, Math.abs(x)) * 15 * (0.8 + 0.4 * fbm(x * 0.03, z * 0.03, 7)) * (1 - lane), d = Math.abs(x - riverX(z)), river = -1.7 * (1 - sm(3, 9, d)) * (1 - 0.6 * lane);
+        return edge(x, z) * 0.5 + wall + river + hh(x, z) * (1 - sm(26, 42, Math.abs(x)));
+      }, (x, z, h, sl, o) => { const n = fbm(x * 0.2, z * 0.2, 4); if (h < -0.2) mixc(o, 0x8a6a4a, 0x6f5a3e, n, 0.9); else if (sl > 0.55) mixc(o, 0xa8553a, 0x80402c, n, 0.95); else mixc(o, 0xc98a5a, 0xb4784a, n, 0.95); }, 'dirt');
+      const wm = new T.Mesh(new T.PlaneGeometry(2 * W.half + 60, 2 * W.half + 60), new T.MeshLambertMaterial({ color: 0x2f7a8a, transparent: true, opacity: 0.85 })); wm.rotation.x = -Math.PI / 2; wm.position.y = W.waterY; W.group.add(wm); W.water = wm;
+      for (let k = 0; k < 3; k++) { // pontes de madeira com corrimão
+        const z = (k - 1) * H * 0.5 + (rng() - 0.5) * 14, rx = riverX(z), x0 = rx - 11, x1 = rx + 11;
+        W.box(x0, -0.35, z - 1.7, x1, 0.32, z + 1.7, 'wood', { u: 1.2, tag: 'wood' });
+        W.box(x0, 0.32, z - 1.7, x1, 1.2, z - 1.55, 'wood', { u: 1.2, tag: 'wood' }); W.box(x0, 0.32, z + 1.55, x1, 1.2, z + 1.7, 'wood', { u: 1.2, tag: 'wood' });
+        for (let i = 0; i <= 4; i++) { const px = mix(x0 + 1, x1 - 1, i / 4); W.box(px - 0.15, -1.6, z - 1.5, px + 0.15, -0.3, z - 1.2, 'wood', { u: 1, tag: 'wood' }); W.box(px - 0.15, -1.6, z + 1.2, px + 0.15, -0.3, z + 1.5, 'wood', { u: 1, tag: 'wood' }); }
+      }
+      rocks(W, rng, cnt(70), 1.2, 4.2, 0x9a5a3e); rocks(W, rng, cnt(40), 0.6, 1.6, 0xb4784a);
+      scatter(W, rng, 'dead', cnt(40), { col: 0.25, smin: 0.9, smax: 1.4, laneKeep: 0.8 }); scatter(W, rng, 'bush', cnt(90), { smin: 0.6, smax: 1.2, shadow: false, laneKeep: 0.6 });
+      for (const [sx, sz] of sites(rng, cnt(3) + 1, 60, 70)) { const h = W.heightAt(sx, sz); if (h > -0.2 && h < 1.5 && Math.abs(sx - riverX(sz)) > 14) hollow(W, rng, sx - 5, sz - 4, sx + 5, sz + 4, 2.8, 'wood', { u: 1.6, partition: false, roofMat: 'wood' }); }
+      for (let i = 0; i < cnt(10); i++) { const p = W.randomFree(rng, -H + 20, H - 20, -H + 40, H - 40, 1); sandbags(W, p.x, p.z, 3.5, rng() < 0.5, 0.9); }
+      placeSpawns(W, rng);
+    }
+  };
+
+  // =================== VULCÃO ===================
+  BC.maps.volcano = {
+    id: 'volcano', name: 'Vulcão em Erupção', desc: 'Cone de cinzas com cratera de lava e poças de lava que bloqueiam passagens. Cinza no ar, pouca visão e muito terreno elevado.',
+    sw: ['#d2561a', '#2a1a18'], ambient: 'desert', weather: 'dust', surf: 'rock',
+    sky: { top: 0x2a1a18, horizon: 0xb05a30 }, fog: { color: 0x5a3426, density: 0.011 },
+    sun: { color: 0xff9a5a, i: 0.8, dir: [-0.3, 0.55, 0.4] }, hemi: { sky: 0x8a5a40, ground: 0x3a2a24, i: 0.75 }, seed: 1414,
+    build(W, rng) {
+      const H = S.H, pools = sites(rng, cnt(5), 38, 70).filter((q) => Math.hypot(q[0], q[1]) > 40).map((q) => [q[0], q[1], 5 + rng() * 3]);
+      const cone = (x, z) => { const r = Math.hypot(x, z); return 20 * (1 - sm(8, 70, r)) - 9 * (1 - sm(0, 13, r)); };
+      W.makeTerrain((x, z) => { let h = edge(x, z) * 0.5 + cone(x, z) * (1 - 0.9 * sm(H - 52, H - 30, Math.abs(z))) + 1.2 * (fbm(x * 0.05, z * 0.05, 11) - 0.4); for (const q of pools) { const d = Math.hypot(x - q[0], z - q[1]); h -= 1.2 * (1 - sm(q[2] * 0.8, q[2] * 1.6, d)); } return h; },
+        (x, z, h, sl, o) => { const n = fbm(x * 0.25, z * 0.25, 5); mixc(o, 0x4a4440, 0x2a2624, n, 0.95); if (sl > 0.5) mixc(o, 0x3a3230, 0x1c1816, 0.6, 0.95); const r = Math.hypot(x, z); let g = Math.max(0, 1 - Math.abs(r - 9) / 8) * (r < 22 ? 1 : 0); for (const q of pools) g = Math.max(g, Math.max(0, 1 - (Math.hypot(x - q[0], z - q[1]) - q[2]) / 4)); if (g > 0) { o[0] = mix(o[0], 0.9, g * 0.7); o[1] = mix(o[1], 0.25, g * 0.7); o[2] = mix(o[2], 0.05, g * 0.7); } }, 'rock');
+      const lava = (x, z, r, y) => { const m = new T.Mesh(new T.CircleGeometry(r, 28), new T.MeshBasicMaterial({ color: 0xff5a14 })), m2 = new T.Mesh(new T.CircleGeometry(r * 0.6, 24), new T.MeshBasicMaterial({ color: 0xffb040 })); for (const q of [m, m2]) { q.rotation.x = -Math.PI / 2; } m.position.set(x, y + 0.1, z); m2.position.set(x, y + 0.14, z); W.group.add(m, m2); W.addCylCol(x, z, r * 0.98, y - 2, y + 2.5, 'rock'); };
+      for (const q of pools) lava(q[0], q[1], q[2] * 0.85, W.heightAt(q[0], q[1]));
+      lava(0, 0, 8.5, W.heightAt(0, 0));
+      rocks(W, rng, cnt(80), 0.8, 3.2, 0x38322e); rocks(W, rng, cnt(40), 0.5, 1.2, 0x4a4440);
+      scatter(W, rng, 'dead', cnt(30), { col: 0.25, smin: 0.9, smax: 1.5, laneKeep: 0.7 });
+      for (const [sx, sz] of sites(rng, cnt(2) + 1, 70, 70)) { if (Math.hypot(sx, sz) > 30) hollow(W, rng, sx - 5, sz - 4, sx + 5, sz + 4, 2.8, 'concrete', { partition: false, color: 0x5a5450 }); }
+      for (let i = 0; i < cnt(10); i++) { const p = W.randomFree(rng, -H + 20, H - 20, -H + 40, H - 40, 1); sandbags(W, p.x, p.z, 3.5, rng() < 0.5, 0.9); }
+      placeSpawns(W, rng);
+    }
+  };
+
+  // =================== FAZENDA ===================
+  BC.maps.farm = {
+    id: 'farm', name: 'Fazenda de Trigo', desc: 'Campos de trigo alto onde dá para se esconder, celeiros, silos, moinho e cercas. Visão cortada no chão e vantagem para quem se agacha.',
+    sw: ['#d8c060', '#5a7a3a'], ambient: 'forest', weather: 'none', surf: 'grass',
+    sky: { top: 0x5a9ad8, horizon: 0xd8e6ee }, fog: { color: 0xcfdde4, density: 0.006 },
+    sun: { color: 0xfff0c8, i: 1.15, dir: [-0.4, 0.85, 0.3] }, hemi: { sky: 0xdceaf6, ground: 0x8a9a5a, i: 0.95 }, seed: 1515,
+    build(W, rng) {
+      const H = S.H; const hh = hillsFn(rng, cnt(5) + 2, 30, 60, 3, 7);
+      W.makeTerrain((x, z) => edge(x, z) * 0.6 + hh(x, z) + 0.6 * (fbm(x * 0.03, z * 0.03, 21) - 0.4), (x, z, h, sl, o) => { const n = fbm(x * 0.2, z * 0.2, 4); mixc(o, 0x7a9a45, 0x5f8a3a, n, 0.95); if (sl > 0.5) mixc(o, 0x8a7a55, 0x6a5a40, 0.5, 0.95); }, 'grass');
+      const fields = []; for (let i = 0; i < cnt(5) + 1; i++) { const cx = (rng() * 2 - 1) * (H - 50), cz = (rng() * 2 - 1) * (H - 70), w = 30 + rng() * 26, d = 26 + rng() * 22; fields.push([cx - w / 2, cz - d / 2, cx + w / 2, cz + d / 2]); }
+      const inField = (x, z) => fields.some((f) => x > f[0] && x < f[2] && z > f[1] && z < f[3]);
+      scatter(W, rng, 'wheat', Math.min(5000, cnt(2600)), { smin: 0.9, smax: 1.3, shadow: false, avoid: (x, z) => !inField(x, z) });
+      for (const [sx, sz] of sites(rng, cnt(2) + 1, 70, 70)) { if (!inField(sx, sz)) { hollow(W, rng, sx - 10, sz - 7, sx + 10, sz + 7, 7, 'wood', { u: 2, partition: false, roofMat: 'wood', color: 0x9a3a2a }); } }
+      for (let i = 0; i < cnt(4); i++) { const p = W.randomFree(rng, -H + 30, H - 30, -H + 50, H - 50, 5); W.cyl(p.x, p.z, 3, W.heightAt(p.x, p.z), W.heightAt(p.x, p.z) + 14, 'metal', { color: 0xc8ccd0, tag: 'metal' }); }
+      const wm = W.randomFree(rng, -H * 0.5, H * 0.5, -H * 0.3, H * 0.3, 4); { const y = W.heightAt(wm.x, wm.z); W.cyl(wm.x, wm.z, 1.6, y, y + 9, 'wood', { color: 0xd8d0c0, tag: 'wood' }); W.box(wm.x - 5, y + 9, wm.z - 0.3, wm.x + 5, y + 10, wm.z + 0.3, 'wood', { u: 1, tag: 'wood' }); W.box(wm.x - 0.3, y + 4.5, wm.z - 0.3, wm.x + 0.3, y + 14, wm.z + 0.3, 'wood', { u: 1, tag: 'wood' }); }
+      for (let i = 0; i < cnt(9); i++) { const p = W.randomFree(rng, -H + 20, H - 20, -H + 40, H - 40, 2); W.cyl(p.x, p.z, 1.4, W.heightAt(p.x, p.z), W.heightAt(p.x, p.z) + 1.8, 'wood', { color: 0xd4b45a, tag: 'wood' }); }
+      for (let i = 0; i < cnt(8); i++) { const p = W.randomFree(rng, -H + 20, H - 20, -H + 40, H - 40, 5), y = W.heightAt(p.x, p.z), a = rng() < 0.5; for (let k = 0; k < 8; k++) { const q = k * 2.4; if (a) W.box(p.x + q, y, p.z - 0.06, p.x + q + 0.14, y + 1.1, p.z + 0.06, 'wood', { u: 1, tag: 'wood' }); else W.box(p.x - 0.06, y, p.z + q, p.x + 0.06, y + 1.1, p.z + q + 0.14, 'wood', { u: 1, tag: 'wood' }); } }
+      for (let i = 0; i < cnt(3); i++) { const p = W.randomFree(rng, -H + 20, H - 20, -H + 40, H - 40, 4); car(W, p.x, p.z, rng() < 0.5, 0x3a8a3a); }
+      scatter(W, rng, 'oak', cnt(40), { col: 0.3, smin: 1, smax: 1.5, tint: 0xffffff, sy: true, avoid: (x, z) => inField(x, z) }); scatter(W, rng, 'bush', cnt(60), { smin: 0.6, smax: 1.1, shadow: false, laneKeep: 0.5 });
+      rocks(W, rng, cnt(14), 0.5, 1.3, 0x8a8a80);
+      placeSpawns(W, rng);
+    }
+  };
+
+  // =================== PORTO ===================
+  BC.maps.harbor = {
+    id: 'harbor', name: 'Porto de Contêineres', desc: 'Pilhas de contêineres formando labirintos, escadas para os telhados, guindastes gigantes e navios atracados. Combate vertical.',
+    sw: ['#4a7aa0', '#8a8a8a'], ambient: 'city', weather: 'none', surf: 'concrete',
+    sky: { top: 0x5a8ac8, horizon: 0xc6d6e0 }, fog: { color: 0xbccdd8, density: 0.008 },
+    sun: { color: 0xfff2d8, i: 1.1, dir: [-0.35, 0.85, 0.3] }, hemi: { sky: 0xd0e0f0, ground: 0x7a7e84, i: 0.9 }, seed: 1616,
+    build(W, rng) {
+      const H = S.H; W.waterY = -0.3; const shore = H * 0.62;
+      W.makeTerrain((x, z) => { const d = Math.abs(x); const land = 0.45 * (1 - sm(shore, shore + 8, d)) - 2.4 * sm(shore, shore + 10, d); return land + 0.0 * edge(x, z); }, (x, z, h, sl, o) => { const n = fbm(x * 0.2, z * 0.2, 4); if (h < 0.1) mixc(o, 0x6a6a5a, 0x4a4a40, n, 0.9); else mixc(o, 0x8a8a86, 0x74746f, n, 0.95); }, 'concrete');
+      const wm = new T.Mesh(new T.PlaneGeometry(2 * W.half + 60, 2 * W.half + 60), new T.MeshLambertMaterial({ color: 0x24607a, transparent: true, opacity: 0.9 })); wm.rotation.x = -Math.PI / 2; wm.position.y = W.waterY; W.group.add(wm); W.water = wm;
+      const cols = [0xa83a2a, 0x2f5a9a, 0x3a7a3a, 0xc8a02a, 0x6a6a70, 0x8a4a2a, 0x2a7a8a];
+      const stairs = (x, z, dir, h) => { const n = Math.round(h / 0.5); for (let i = 0; i < n; i++) { if (dir === 'z') W.box(x - 0.9, 0, z + i * 0.6, x + 0.9, (i + 1) * 0.5, z + i * 0.6 + 0.6, 'metal', { color: 0x4a4e52, tag: 'metal' }); else W.box(x + i * 0.6, 0, z - 0.9, x + i * 0.6 + 0.6, (i + 1) * 0.5, z + 0.9, 'metal', { color: 0x4a4e52, tag: 'metal' }); } };
+      const rows = Math.max(3, Math.round(S.H / 28));
+      for (let r = 0; r < rows; r++) {
+        const z = (r - (rows - 1) / 2) * (H * 1.1 / rows); if (Math.abs(z) > H - 48) continue;
+        for (let c = 0; c < 5; c++) {
+          const x = (c - 2) * 26 + (rng() - 0.5) * 6; if (Math.abs(x) > shore - 14) continue; const nB = 1 + ((rng() * 3) | 0), alongX = rng() < 0.5;
+          for (let b = 0; b < nB; b++) { const L = 6.1, Wd = 2.44, Hh = 2.6, ox = alongX ? b * (L + 0.4) : (rng() < 0.3 ? 0.3 : 0), oz = alongX ? 0 : b * (Wd + 0.4); const lv = rng() < 0.3 ? 2 : 1;
+            for (let l = 0; l < lv; l++) { if (alongX) W.box(x + ox, l * Hh, z + oz, x + ox + L, (l + 1) * Hh, z + oz + Wd, 'metal', { color: cols[(rng() * cols.length) | 0], tag: 'metal', u: 3 }); else W.box(x + ox, l * Hh, z + oz, x + ox + Wd, (l + 1) * Hh, z + oz + L, 'metal', { color: cols[(rng() * cols.length) | 0], tag: 'metal', u: 3 }); } }
+          if (rng() < 0.45) stairs(x - 3, z - 3, 'z', 2.6);
+        }
+      }
+      for (const sx of [-1, 1]) { for (let i = 0; i < 2; i++) { const cz = (i - 0.5) * H * 0.7, cx = sx * (shore - 6); for (const dz of [-6, 6]) for (const dx of [-3, 3]) W.box(cx + dx - 0.5, 0, cz + dz - 0.5, cx + dx + 0.5, 24, cz + dz + 0.5, 'metal', { color: 0xd8a020, tag: 'metal' }); W.box(cx - 4, 24, cz - 7, cx + 4, 25.2, cz + 7, 'metal', { color: 0xd8a020, tag: 'metal' }); W.box(cx - 0.8 + sx * 6, 22, cz - 0.4, cx + 0.8 + sx * 20, 24, cz + 0.4, 'metal', { color: 0xc89010, tag: 'metal' }); }
+        const sz0 = (rng() - 0.5) * H * 0.5; W.box(sx * (shore + 12) - 5, -2.4, sz0 - 32, sx * (shore + 12) + 5, 4.5, sz0 + 32, 'metal', { color: 0x363c44, tag: 'metal', u: 4, col: true }); W.box(sx * (shore + 12) - 3.5, 4.5, sz0 - 6, sx * (shore + 12) + 3.5, 11, sz0 + 6, 'metal', { color: 0xe4e4e0, tag: 'metal', u: 4 }); }
+      for (const [sx, sz] of sites(rng, cnt(2) + 1, 70, 70)) { if (Math.abs(sx) < shore - 22) hollow(W, rng, sx - 12, sz - 8, sx + 12, sz + 8, 7, 'metal', { u: 3, partition: false, roofMat: 'metal', color: 0x9aa0a6 }); }
+      for (let i = 0; i < cnt(10); i++) { const p = W.randomFree(rng, -shore + 8, shore - 8, -H + 30, H - 30, 1); sandbags(W, p.x, p.z, 3.5, rng() < 0.5, 0.9); }
+      for (let i = 0; i < cnt(6); i++) { const p = W.randomFree(rng, -shore + 8, shore - 8, -H + 30, H - 30, 3); car(W, p.x, p.z, rng() < 0.5, [0x4a5a3a, 0x6a6a6a][i % 2]); }
+      placeSpawns(W, rng);
+    }
+  };
+
+  BC.MAP_ORDER = ['snow', 'forest', 'trench', 'city', 'swamp', 'desert', 'jungle', 'mountain', 'industrial', 'village', 'airbase', 'coast', 'canyon', 'volcano', 'farm', 'harbor'];
   // tamanhos (metade da área jogável, em metros): total = 2H
   BC.MAP_SIZES = { pequeno: 110, medio: 160, grande: 220, enorme: 280 };
   BC.buildMap = function (id, size) {

@@ -183,7 +183,7 @@
               }
             }
           } else {
-            if (o.y1 <= feetY + step || o.y0 >= feetY + hgt) continue;
+            if (o.y1 <= feetY + 0.12 || o.y0 >= feetY + hgt) continue; // cilindros (pedras, troncos) não são degraus
             const dx = p.x - o.x, dz = p.z - o.z, rr = o.r + r, d2 = dx * dx + dz * dz;
             if (d2 < rr * rr) { hit = true; const d = Math.sqrt(d2) || 1e-4, k = (rr - d) / d; p.x = o.x + dx * k; p.z = o.z + dz * k; }
           }

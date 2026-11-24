@@ -114,16 +114,20 @@
     else { this.alive = false; this.deadT = 0; this.deaths++; this.respawnT = 6 + rng() * 2; G.fx.pool(this.x, this.y, this.z, amount); }
     let dx = dir ? dir.x : -Math.sin(this.yaw) * -1, dz = dir ? dir.z : -Math.cos(this.yaw) * -1; const l = Math.hypot(dx, dz) || 1; dx /= l; dz /= l;
     const dist = from ? Math.hypot(from.x - this.x, from.z - this.z) : 30;
-    const energy = kind === 'blast' ? 4 : !spec ? 2 : spec.cls === 'shotgun' ? (dist < 9 ? 3 : 2) : (amount >= 95 || spec.dmg >= 95) ? 3 : (spec.dmg >= 62 || spec.cls === 'sniper') ? 2 : 1;
+    // força do impacto: depende do calibre (energia ≈ dano × √velocidade) e, nas espingardas, da distância
+    let F = spec ? BC.clamp(spec.dmg * Math.sqrt((spec.v0 || 700) / 800) / 62, 0.3, 3.6) : 1.2; if (spec && spec.cls === 'shotgun') F = dist < 9 ? 2.6 : dist < 20 ? 1.6 : 0.9; if (kind === 'blast') F = 4; if (kind === 'rocket') F = 4;
+    const energy = kind === 'blast' ? 4 : kind === 'bleed' ? 0 : F >= 1.9 ? 3 : F >= 1.1 ? 2 : 1;
     const side = rng() < 0.5 ? -1 : 1, px = -dz * side, pz = dx * side;
     let type;
     if (this.stn > 1.5) type = 'prone'; else if (kind === 'blast') type = 'blast'; else if (zone === 'head') type = energy >= 3 ? 'headblast' : 'headdrop'; else if (zone === 'legs') type = 'legs';
     else type = energy >= 3 ? 'knock' : energy === 2 ? 'back' : (rng() < 0.5 ? 'crumple' : 'slump');
-    const P = { knock: [1.1, 4.2, 1.45], back: [1.3, 1.8, 1.35], crumple: [1.45, 0.2, 1.25], slump: [1.35, 0.3, 1.3], headdrop: [0.8, 0.1, 1.3], headblast: [0.85, 2.6, 1.45], legs: [1.0, 0.5, 1.4], blast: [1.2, 7.5, 1.9], prone: [0.5, 0, 0] }[type];
+    if (kind === 'bleed') type = 'slump'; // sangramento: cai suave, como se tivesse parado de funcionar
+    let P = { knock: [1.1, 4.2, 1.45], back: [1.3, 1.8, 1.35], crumple: [1.45, 0.2, 1.25], slump: [1.35, 0.3, 1.3], headdrop: [0.8, 0.1, 1.3], headblast: [0.85, 2.6, 1.45], legs: [1.0, 0.5, 1.4], blast: [1.2, 7.5, 1.9], prone: [0.5, 0, 0] }[type];
+    if (kind === 'bleed') P = [2.6, 0.02, 1.35]; else if (type !== 'prone') { P = P.slice(); P[1] *= 0.4 + F * 0.6; if (F > 2.6) P[0] *= 0.85; }
     let fx = dx, fz = dz;
     if (type === 'crumple' || type === 'headdrop') { fx = -dx * 0.8 + px * 0.3; fz = -dz * 0.8 + pz * 0.3; } else if (type === 'slump' || type === 'legs') { fx = px; fz = pz; }
     const fl = Math.hypot(fx, fz) || 1;
-    this.death = { type, t: 0, dur: P[0], kn: P[1], theta: P[2], fx: fx / fl, fz: fz / fl, dx, dz, side, lx: this.x, lz: this.z, energy, flail: rng() * 6, legSide: side };
+    this.death = { type, t: 0, dur: P[0], kn: P[1], theta: P[2], fx: fx / fl, fz: fz / fl, dx, dz, side, lx: this.x, lz: this.z, energy, flail: rng() * 6 * (kind === 'bleed' ? 0.15 : 1), legSide: side, lift: kind === 'bleed' ? 0 : F > 2.0 ? Math.min(1.1, (F - 2.0) * 0.7) : 0, F };
     if (!faintOnly) { G.onKill(from, this, wid, head); if (G.fx.deathBlood) G.fx.deathBlood(this, zone, dir, energy, amount); }
     if (BC.Audio.thud) setTimeout(() => BC.Audio.thud(Math.hypot(G.player.x - this.x, G.player.z - this.z), G.panTo(this.x, this.z)), 450 + this.death.dur * 300);
   };
@@ -203,7 +207,7 @@
     if (!this.alive || this.faintT > 0) {
       if (this.alive) { // desmaiado: continua sangrando, leva dano e pode acordar
         this.faintT -= dt;
-        if (this.bld > 0.01) { this.hp -= this.bld * dt; this.bld *= Math.exp(-0.08 * dt); if (this.hp <= 0) { this.die(this.lastFrom, this.lastWid, false, 'body', null, null, 20); return; } }
+        if (this.bld > 0.01) { this.hp -= this.bld * dt; this.bld *= Math.exp(-0.08 * dt); if (this.hp <= 0) { this.die(this.lastFrom, this.lastWid, false, 'body', null, 'bleed', 20); return; } }
         if (this.faintT <= 0) { this.faintT = 0; this.death = null; this.hp = Math.max(this.hp, 10); this.model.root.quaternion.identity(); this.model.root.rotation.set(0, this.yaw, 0); this.stn = 1.2; this.wantStn = 1; this.bld *= 0.5; this.alertT = 2; return; }
       }
       this.deadT += dt; const m = this.model, d = this.death;
@@ -214,7 +218,7 @@
         // empurrão do impacto (desacelera) e salto da explosão
         const kv = d.kn * Math.exp(-3.2 * d.t); const nx = this.x + d.fx * 0.0 + d.dx * kv * dt * (d.type === 'crumple' || d.type === 'slump' || d.type === 'headdrop' ? 0.2 : 1), nz = this.z + d.dz * kv * dt * (d.type === 'crumple' || d.type === 'slump' || d.type === 'headdrop' ? 0.2 : 1);
         if (Math.abs(nx) < w.play && Math.abs(nz) < w.play) { this.x = nx; this.z = nz; } this.y = w.groundAt(this.x, this.z, this.y + 0.3, 0.5);
-        const lift = d.type === 'blast' ? Math.max(0, 1.1 * Math.sin(Math.PI * Math.min(1, d.t / 0.7))) : 0;
+        const lift = d.type === 'blast' ? Math.max(0, 1.1 * Math.sin(Math.PI * Math.min(1, d.t / 0.7))) : d.lift ? d.lift * Math.max(0, Math.sin(Math.PI * Math.min(1, d.t / 0.65))) : 0;
         let theta = d.theta * ef; if (d.type === 'blast') theta = d.theta * Math.min(1, d.t / d.dur) * 1.15;
         TT.setFromAxisAngle(new T.Vector3(d.fz, 0, -d.fx), Math.min(theta, 1.57 + (d.type === 'blast' ? 0.3 : 0)));
         m.root.quaternion.copy(TT).multiply(YY); const clampT = Math.min(1, theta / 1.5);
@@ -241,7 +245,7 @@
       if (BC.Gren && BC.Gren.list.length && !this.flee) for (const g of BC.Gren.list) { const gd = Math.hypot(g.p.x - this.x, g.p.z - this.z); if (gd < 9 && g.type !== 'smoke' && g.t > 0.4) { const l = gd || 1; this.flee = { dx: (this.x - g.p.x) / l, dz: (this.z - g.p.z) / l, t: 2.4 }; break; } }
     }
     if (this.bleed.length) G.fx.bleedTick(this, dt);
-    if (this.bld > 0.01) { this.hp -= this.bld * dt; this.bld *= Math.exp(-0.08 * dt); if (this.hp <= 0) { this.die(this.lastFrom, this.lastWid, false, 'body', null, null, 20); return; } }
+    if (this.bld > 0.01) { this.hp -= this.bld * dt; this.bld *= Math.exp(-0.08 * dt); if (this.hp <= 0) { this.die(this.lastFrom, this.lastWid, false, 'body', null, 'bleed', 20); return; } }
     if (this.target && (!this.target.alive)) { this.target = null; this.lostT = 99; }
     if (!this.seen) this.lostT += dt;
     if (this.target && this.lostT > 4) { this.target = null; }

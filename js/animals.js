@@ -118,7 +118,7 @@
   };
   // ---- modelos 3D (Quaternius CC0 e Poly by Google CC-BY) ----
   const FILES = { camel: ['camel_a', 2.6], snake: ['cobra_b', 1.5], scorpion: ['scorpion', 0.55], fox: ['Fox', 0.95], wolf: ['Wolf', 1.35], bear: ['bear_b', 1.9], polar: ['bear_b', 2.1, 0xf2f4f4], deer: ['Deer', 1.8], boar: ['boar', 1.3], croc: ['alligator', 3.2], jaguar: ['jaguar', 1.6], goat: ['ibex', 1.25], capy: ['capybara', 1.05], rabbit: ['rabbit_b', 0.42] };
-  const FLIP = {}; // espécies cujo modelo olha para o lado oposto ao padrão
+  const FLIP = { rabbit: true }; // espécies cujo modelo olha para o lado oposto ao padrão
   BC.animalProto = {};
   function measure(obj, mat) {
     obj.updateMatrixWorld(true); const box = new T.Box3(), v = new T.Vector3();

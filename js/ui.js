@@ -63,7 +63,7 @@
     if (!Array.isArray(S.loadout) || !S.loadout.length) S.loadout = BC.DEFAULT_LOADOUT.slice();
     S.loadout = S.loadout.filter((id) => BC.WMAP[id]).slice(0, 2); if (!S.loadout.length) S.loadout = BC.DEFAULT_LOADOUT.slice();
     S.scopes = S.scopes || {};
-    const OPT = { launcher: ['iron'], pistol: ['iron', 'reddot'], revolver: ['iron'], smg: ['iron', 'reddot', 'holo'], rifle: ['iron', 'reddot', 'holo', 'acog', 'mid'], lmg: ['iron', 'reddot', 'holo', 'acog'], shotgun: ['iron', 'reddot', 'holo'], sniper: ['iron', 'acog', 'mid', 'long'] };
+    const OPT = { launcher: ['iron'], pistol: ['iron', 'reddot', 'micro'], revolver: ['iron'], smg: ['iron', 'reddot', 'micro', 'reflex', 'holo'], rifle: ['iron', 'reddot', 'micro', 'reflex', 'holo', 'prism', 'acog', 'lpvo', 'thermal', 'nv', 'mid'], lmg: ['iron', 'reddot', 'holo', 'prism', 'acog'], shotgun: ['iron', 'reddot', 'micro', 'reflex', 'holo'], sniper: ['iron', 'acog', 'lpvo', 'mid', 'dmr', 'thermal', 'nv', 'long'] };
     const refreshSel = () => {
       for (const id in cards) cards[id].classList.toggle('sel', S.loadout.includes(id)); $('wsel').textContent = S.loadout.map((id) => BC.WMAP[id].name).join('  +  ');
       const box = $('wscopes'); box.innerHTML = '';
