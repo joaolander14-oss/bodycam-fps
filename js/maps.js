@@ -664,7 +664,115 @@
     }
   };
 
-  BC.MAP_ORDER = ['snow', 'forest', 'trench', 'city', 'swamp', 'desert', 'jungle', 'mountain', 'industrial', 'village', 'airbase', 'coast', 'canyon', 'volcano', 'farm', 'harbor'];
+
+  // degraus (subida de 0,5 m por passo) em uma direção: dir 'x+','x-','z+','z-'
+  function stairsUp(W, x, z, dir, n, wd, mat, color) {
+    const sd = 0.6, sh = 0.5; for (let i = 0; i < n; i++) {
+      const o = i * sd; let x0 = x, z0 = z, x1 = x, z1 = z;
+      if (dir === 'z+') { x0 = x - wd / 2; x1 = x + wd / 2; z0 = z + o; z1 = z + o + sd; } else if (dir === 'z-') { x0 = x - wd / 2; x1 = x + wd / 2; z0 = z - o - sd; z1 = z - o; }
+      else if (dir === 'x+') { z0 = z - wd / 2; z1 = z + wd / 2; x0 = x + o; x1 = x + o + sd; } else { z0 = z - wd / 2; z1 = z + wd / 2; x0 = x - o - sd; x1 = x - o; }
+      W.box(x0, 0, z0, x1, (i + 1) * sh, z1, mat || 'concrete', { color, u: 1.5 });
+    }
+  }
+
+  // =================== TEMPLO EM RUÍNAS ===================
+  BC.maps.ruins = {
+    id: 'ruins', name: 'Templo em Ruínas', desc: 'Pirâmide escalonada no centro da selva: dá para subir os degraus e dominar o mapa do topo. Pilares, muros caídos e névoa.',
+    sw: ['#7a8a4a', '#3a3a30'], ambient: 'forest', weather: 'rain', surf: 'grass',
+    sky: { top: 0x6a8a98, horizon: 0xb8c8c0 }, fog: { color: 0x9ab0a4, density: 0.012 },
+    sun: { color: 0xf0f0d0, i: 0.9, dir: [-0.3, 0.8, 0.35] }, hemi: { sky: 0xb8d0c0, ground: 0x4a5a3a, i: 0.85 }, seed: 1717,
+    build(W, rng) {
+      const H = S.H, hh = hillsFn(rng, cnt(4) + 2, 26, 50, 2, 6);
+      W.makeTerrain((x, z) => { let h = edge(x, z) * 0.5 + hh(x, z) * 0.7 + 0.5 * (fbm(x * 0.04, z * 0.04, 3) - 0.4); return flatBlend(x, z, 0, 0, 40, 0.3, h); },
+        (x, z, h, sl, o) => { const n = fbm(x * 0.2, z * 0.2, 4); mixc(o, 0x4a7a35, 0x3a6a2a, n, 0.92); if (Math.hypot(x, z) < 30) mixc(o, 0x8a8a78, 0x6f6f60, n, 0.95); }, 'grass');
+      W.yoff = 0; const T0 = 12, half0 = 21;
+      for (let t = 0; t < T0; t++) { const hf = half0 - t * 1.5; W.box(-hf, 0.3, -hf, hf, 0.3 + (t + 1) * 0.5, hf, 'concrete', { u: 3, color: t % 2 ? 0x8a8a78 : 0x7c7c6c, tag: 'rock' }); }
+      W.box(-3, 0.3 + T0 * 0.5, -3, 3, 0.3 + T0 * 0.5 + 3.6, 3, 'concrete', { u: 2, color: 0x6a6a5c, tag: 'rock' });
+      for (let i = 0; i < 8; i++) { const a = i / 8 * 6.283, px = Math.cos(a) * 29, pz = Math.sin(a) * 29; W.cyl(px, pz, 0.9, 0.3, 6, 'concrete', { color: 0x8a8a78, tag: 'rock' }); }
+      for (let i = 0; i < cnt(14); i++) { const p = W.randomFree(rng, -H + 20, H - 20, -H + 40, H - 40, 2); if (Math.hypot(p.x, p.z) < 28) continue; const y = W.heightAt(p.x, p.z), a = rng() < 0.5, l = 3 + rng() * 6; if (a) W.box(p.x, y, p.z, p.x + l, y + 1 + rng() * 2, p.z + 0.8, 'concrete', { u: 2, color: 0x7a7a68, tag: 'rock' }); else W.box(p.x, y, p.z, p.x + 0.8, y + 1 + rng() * 2, p.z + l, 'concrete', { u: 2, color: 0x7a7a68, tag: 'rock' }); }
+      for (const [sx, sz] of sites(rng, cnt(2) + 1, 60, 70)) { if (Math.hypot(sx, sz) > 55) hollow(W, rng, sx - 5, sz - 4, sx + 5, sz + 4, 3, 'concrete', { partition: false, color: 0x7a7a6a, roofMat: 'concrete' }); }
+      scatter(W, rng, 'palm', cnt(120), { col: 0.2, colH: 5, smin: 0.9, smax: 1.5, avoid: (x, z) => Math.hypot(x, z) < 32 }); scatter(W, rng, 'oak', cnt(90), { col: 0.3, smin: 1, smax: 1.8, tint: 0xffffff, sy: true, avoid: (x, z) => Math.hypot(x, z) < 32 });
+      scatter(W, rng, 'bush', cnt(240), { smin: 0.7, smax: 1.5, shadow: false, laneKeep: 0.5 }); rocks(W, rng, cnt(40), 0.7, 2.4, 0x6f7566);
+      for (let i = 0; i < cnt(8); i++) { const p = W.randomFree(rng, -H + 20, H - 20, -H + 40, H - 40, 1); if (Math.hypot(p.x, p.z) > 30) sandbags(W, p.x, p.z, 3.5, rng() < 0.5, 0.9); }
+      placeSpawns(W, rng);
+    }
+  };
+
+  // =================== CAMPO DE PETRÓLEO ===================
+  BC.maps.oilfield = {
+    id: 'oilfield', name: 'Campo de Petróleo', desc: 'Bombas de petróleo, torres de perfuração, tanques gigantes e oleodutos baixos para pular. Chamas nas chaminés e poças de óleo.',
+    sw: ['#c8a060', '#2a2420'], ambient: 'desert', weather: 'dust', surf: 'dirt',
+    sky: { top: 0x7a9ac0, horizon: 0xdac8a0 }, fog: { color: 0xcdb48a, density: 0.009 },
+    sun: { color: 0xffe8b8, i: 1.1, dir: [-0.4, 0.8, 0.3] }, hemi: { sky: 0xe6d8bc, ground: 0x8a6a44, i: 0.9 }, seed: 1818,
+    build(W, rng) {
+      const H = S.H, hh = hillsFn(rng, cnt(4) + 2, 28, 54, 2, 5);
+      W.makeTerrain((x, z) => edge(x, z) * 0.5 + hh(x, z) * 0.8 + 0.4 * (fbm(x * 0.04, z * 0.04, 5) - 0.4), (x, z, h, sl, o) => { const n = fbm(x * 0.2, z * 0.2, 4); mixc(o, 0xc8a46a, 0xb08a52, n, 0.95); if (sl > 0.5) mixc(o, 0x8a6a44, 0x6a4f34, 0.5, 0.95); }, 'dirt');
+      for (let i = 0; i < cnt(8) + 2; i++) { const p = W.randomFree(rng, -H + 20, H - 20, -H + 50, H - 50, 4), y = W.heightAt(p.x, p.z); W.box(p.x - 1.4, y, p.z - 0.8, p.x + 1.4, y + 1.0, p.z + 0.8, 'metal', { color: 0x3a6a8a, tag: 'metal' }); W.box(p.x - 2.6, y + 2.2, p.z - 0.25, p.x + 2.2, y + 2.9, p.z + 0.25, 'metal', { color: 0x3a6a8a, tag: 'metal' }); W.box(p.x - 0.2, y + 1.0, p.z - 0.25, p.x + 0.2, y + 2.4, p.z + 0.25, 'metal', { color: 0x2a4a5a, tag: 'metal' }); W.box(p.x - 2.9, y + 1.4, p.z - 0.2, p.x - 2.4, y + 2.8, p.z + 0.2, 'metal', { color: 0x2a4a5a, tag: 'metal' }); }
+      for (let i = 0; i < cnt(4); i++) { const p = W.randomFree(rng, -H + 25, H - 25, -H + 50, H - 50, 5), y = W.heightAt(p.x, p.z); for (const [dx, dz] of [[-2, -2], [2, -2], [-2, 2], [2, 2]]) W.box(p.x + dx - 0.2, y, p.z + dz - 0.2, p.x + dx + 0.2, y + 20, p.z + dz + 0.2, 'metal', { color: 0x8a5a2a, tag: 'metal' }); for (const lv of [6, 12, 18]) W.box(p.x - 2.2, y + lv, p.z - 2.2, p.x + 2.2, y + lv + 0.25, p.z + 2.2, 'metal', { color: 0x7a4a22, tag: 'metal', u: 2 }); }
+      for (let i = 0; i < cnt(4); i++) { const p = W.randomFree(rng, -H + 30, H - 30, -H + 50, H - 50, 8), y = W.heightAt(p.x, p.z); W.cyl(p.x, p.z, 6.5, y, y + 8, 'metal', { color: 0xc8ccd0, tag: 'metal' }); }
+      for (let i = 0; i < cnt(5); i++) { const x0 = (rng() * 2 - 1) * (H - 40), z0 = (rng() * 2 - 1) * (H - 70), a = rng() < 0.5, l = 24 + rng() * 40; for (let k = 0; k < l; k += 6) { const x = a ? x0 + k : x0, z = a ? z0 : z0 + k, y = W.heightAt(x, z); if (a) W.box(x, y, z - 0.35, x + 6, y + 0.5, z + 0.35, 'metal', { color: 0x4a4a4e, tag: 'metal', u: 1.5 }); else W.box(x - 0.35, y, z, x + 0.35, y + 0.5, z + 6, 'metal', { color: 0x4a4a4e, tag: 'metal', u: 1.5 }); } }
+      for (let i = 0; i < cnt(6); i++) { const p = W.randomFree(rng, -H + 25, H - 25, -H + 50, H - 50, 4), y = W.heightAt(p.x, p.z), r = 3 + rng() * 3; const m = new T.Mesh(new T.CircleGeometry(r, 22), new T.MeshBasicMaterial({ color: 0x0c0a08 })); m.rotation.x = -Math.PI / 2; m.position.set(p.x, y + 0.04, p.z); W.group.add(m); }
+      for (let i = 0; i < cnt(2) + 1; i++) { const p = W.randomFree(rng, -H + 25, H - 25, -H + 50, H - 50, 4), y = W.heightAt(p.x, p.z); W.cyl(p.x, p.z, 0.5, y, y + 14, 'metal', { color: 0x55565a, tag: 'metal' }); const f = new T.Mesh(new T.ConeGeometry(0.9, 3, 8), new T.MeshBasicMaterial({ color: 0xff8a1e })); f.position.set(p.x, y + 15.5, p.z); W.group.add(f); const f2 = new T.Mesh(new T.ConeGeometry(0.5, 2, 8), new T.MeshBasicMaterial({ color: 0xffd860 })); f2.position.set(p.x, y + 15.2, p.z); W.group.add(f2); }
+      for (const [sx, sz] of sites(rng, cnt(2) + 1, 70, 70)) hollow(W, rng, sx - 6, sz - 4, sx + 6, sz + 4, 3, 'metal', { u: 2, partition: false, roofMat: 'metal', color: 0xa8aab0 });
+      for (let i = 0; i < cnt(10); i++) { const p = W.randomFree(rng, -H + 20, H - 20, -H + 40, H - 40, 1); sandbags(W, p.x, p.z, 3.5, rng() < 0.5, 0.9); }
+      for (let i = 0; i < cnt(4); i++) { const p = W.randomFree(rng, -H + 20, H - 20, -H + 40, H - 40, 3); car(W, p.x, p.z, rng() < 0.5, 0x8a7a4a); }
+      rocks(W, rng, cnt(24), 0.6, 1.8, 0xa08a62); scatter(W, rng, 'dead', cnt(14), { col: 0.25, laneKeep: 0.8 });
+      placeSpawns(W, rng);
+    }
+  };
+
+  // =================== MINA A CÉU ABERTO ===================
+  BC.maps.pit = {
+    id: 'pit', name: 'Mina a Céu Aberto', desc: 'Cratera gigante em terraços, com rampas, correias transportadoras, caminhões e britadores. Quem está no alto domina quem está embaixo.',
+    sw: ['#a8a090', '#4a4036'], ambient: 'desert', weather: 'dust', surf: 'rock',
+    sky: { top: 0x7a98b8, horizon: 0xd0c8b8 }, fog: { color: 0xc4bcae, density: 0.008 },
+    sun: { color: 0xfff0d0, i: 1.05, dir: [-0.35, 0.85, 0.3] }, hemi: { sky: 0xdad4c4, ground: 0x7a7060, i: 0.9 }, seed: 1919,
+    build(W, rng) {
+      const H = S.H, R = H * 0.62;
+      W.makeTerrain((x, z) => { const r = Math.hypot(x, z), lane = sm(H - 46, H - 24, Math.abs(z)), d = (R - r) / 9; let h = 0; if (r < R) { const q = Math.floor(Math.max(0, d)), f = Math.max(0, d) - q; h = -2.3 * (Math.min(q, 6) + sm(0.35, 1, f)) * (r < R - 54 ? 0 : 1) - (r < R - 54 ? 2.3 * 6 : 0); } return h * (1 - lane) + edge(x, z) * 0.5 + 0.2 * (fbm(x * 0.05, z * 0.05, 8) - 0.4); },
+        (x, z, h, sl, o) => { const n = fbm(x * 0.2, z * 0.2, 4); mixc(o, 0xb0a898, 0x8a8272, n, 0.95); if (sl > 0.4) mixc(o, 0x7a6a58, 0x5a4a3a, 0.5, 0.95); }, 'rock');
+      for (let i = 0; i < cnt(6); i++) { const p = W.randomFree(rng, -R + 6, R - 6, -R + 6, R - 6, 4), y = W.heightAt(p.x, p.z); W.box(p.x - 1, y, p.z - 8, p.x + 1, y + 1.2, p.z + 8, 'metal', { color: 0x4a4e52, tag: 'metal' }); W.box(p.x - 3, y, p.z - 3, p.x + 3, y + 5, p.z + 3, 'metal', { color: 0xd8a020, tag: 'metal' }); }
+      for (let i = 0; i < cnt(5); i++) { const p = W.randomFree(rng, -R + 6, R - 6, -R + 6, R - 6, 4), y = W.heightAt(p.x, p.z), a = rng() < 0.5; if (a) { W.box(p.x - 5, y, p.z - 2, p.x + 5, y + 2.4, p.z + 2, 'metal', { color: 0xd8a020, tag: 'metal' }); W.box(p.x - 5, y + 2.4, p.z - 1.8, p.x - 1, y + 4, p.z + 1.8, 'metal', { color: 0x2a2a2a, tag: 'metal' }); } else { W.box(p.x - 2, y, p.z - 5, p.x + 2, y + 2.4, p.z + 5, 'metal', { color: 0xd8a020, tag: 'metal' }); W.box(p.x - 1.8, y + 2.4, p.z - 5, p.x + 1.8, y + 4, p.z - 1, 'metal', { color: 0x2a2a2a, tag: 'metal' }); } }
+      for (let i = 0; i < cnt(3) + 1; i++) { const p = W.randomFree(rng, -H + 25, H - 25, -H + 50, H - 50, 6); if (Math.hypot(p.x, p.z) < R + 6) continue; const y = W.heightAt(p.x, p.z); W.box(p.x - 6, y, p.z - 5, p.x + 6, y + 9, p.z + 5, 'metal', { color: 0x6a7a8a, tag: 'metal', u: 3 }); W.box(p.x - 3, y + 9, p.z - 3, p.x + 3, y + 14, p.z + 3, 'metal', { color: 0x7a8a9a, tag: 'metal' }); }
+      for (const [sx, sz] of sites(rng, cnt(2) + 1, 70, 70)) { if (Math.hypot(sx, sz) > R + 12) hollow(W, rng, sx - 6, sz - 4, sx + 6, sz + 4, 3, 'metal', { u: 2, partition: false, roofMat: 'metal', color: 0xb0b2b8 }); }
+      for (let i = 0; i < cnt(14); i++) { const p = W.randomFree(rng, -H + 20, H - 20, -H + 40, H - 40, 1); sandbags(W, p.x, p.z, 3.5, rng() < 0.5, 0.9); }
+      for (let i = 0; i < cnt(6); i++) { const p = W.randomFree(rng, -H + 20, H - 20, -H + 40, H - 40, 3); car(W, p.x, p.z, rng() < 0.5, 0xc8981c); }
+      rocks(W, rng, cnt(60), 0.8, 3.2, 0x8a8272);
+      placeSpawns(W, rng);
+    }
+  };
+
+  // =================== CASTELO ===================
+  BC.maps.castle = {
+    id: 'castle', name: 'Castelo Medieval', desc: 'Fortaleza de pedra com fosso de água, ponte levadiça, torres, muralhas com passarela e uma torre de menagem. Cerco e defesa.',
+    sw: ['#8a8a78', '#3a5a3a'], ambient: 'forest', weather: 'none', surf: 'grass',
+    sky: { top: 0x5a88c0, horizon: 0xc8d8e4 }, fog: { color: 0xbccedc, density: 0.007 },
+    sun: { color: 0xfff0d0, i: 1.1, dir: [-0.4, 0.85, 0.3] }, hemi: { sky: 0xd4e4f2, ground: 0x6a8a4a, i: 0.95 }, seed: 2020,
+    build(W, rng) {
+      const H = S.H, C = 30, M0 = 36, M1 = 46; W.waterY = -0.5; const hh = hillsFn(rng, cnt(4) + 2, 28, 50, 2, 5);
+      W.makeTerrain((x, z) => { const m = Math.max(Math.abs(x), Math.abs(z)); let h = edge(x, z) * 0.5 + hh(x, z) * (1 - sm(M0 - 6, M1 + 12, 0) ) * sm(M1 + 6, M1 + 24, m) * 0.8 + 0.3 * (fbm(x * 0.05, z * 0.05, 3) - 0.4); const moat = sm(M0 - 1, M0 + 1.5, m) * (1 - sm(M1 - 1.5, M1 + 0.5, m)); h -= 2.8 * moat; return h; },
+        (x, z, h, sl, o) => { const n = fbm(x * 0.2, z * 0.2, 4); const m = Math.max(Math.abs(x), Math.abs(z)); if (m < M0) mixc(o, 0x8a8a78, 0x74746a, n, 0.95); else if (h < -0.4) mixc(o, 0x5a5a40, 0x44442c, n, 0.9); else mixc(o, 0x5a8a3e, 0x4a7a32, n, 0.95); }, 'grass');
+      const wm = new T.Mesh(new T.PlaneGeometry(2 * W.half + 60, 2 * W.half + 60), new T.MeshLambertMaterial({ color: 0x3a6a78, transparent: true, opacity: 0.88 })); wm.rotation.x = -Math.PI / 2; wm.position.y = W.waterY; W.group.add(wm); W.water = wm;
+      W.yoff = 0; const WH = 8, TK = 3, gap = 4.5;
+      const wall = (x0, z0, x1, z1) => { W.box(x0, 0, z0, x1, WH, z1, 'concrete', { u: 3, color: 0x8a8a78, tag: 'rock' }); const horiz = (x1 - x0) > (z1 - z0), len = horiz ? x1 - x0 : z1 - z0; for (let k = 0; k < len; k += 2.4) { if (horiz) W.box(x0 + k, WH, z0, x0 + k + 1.2, WH + 1.1, z0 + 0.9, 'concrete', { u: 1, color: 0x7a7a6a, tag: 'rock' }); else W.box(x0, WH, z0 + k, x0 + 0.9, WH + 1.1, z0 + k + 1.2, 'concrete', { u: 1, color: 0x7a7a6a, tag: 'rock' }); } };
+      wall(-C, -C, -gap, -C + TK); wall(gap, -C, C, -C + TK); wall(-C, C - TK, -gap, C); wall(gap, C - TK, C, C);
+      wall(-C, -C + TK, -C + TK, C - TK); wall(C - TK, -C + TK, C, C - TK);
+      for (const sx of [-1, 1]) for (const sz of [-1, 1]) { W.cyl(sx * C, sz * C, 5.5, 0, 14, 'concrete', { color: 0x8a8a78, tag: 'rock', u: 2 }); const cone = new T.Mesh(new T.ConeGeometry(6.2, 5, 10), new T.MeshLambertMaterial({ color: 0x8a3a2a })); cone.position.set(sx * C, 16.5, sz * C); W.group.add(cone); }
+      for (const sz of [-1, 1]) { W.box(-gap - 1.2, 0, sz * C - TK / 2 - 0.0, -gap, 11, sz * C + TK / 2, 'concrete', { color: 0x7a7a6a, tag: 'rock' }); W.box(gap, 0, sz * C - TK / 2, gap + 1.2, 11, sz * C + TK / 2, 'concrete', { color: 0x7a7a6a, tag: 'rock' }); W.box(-gap - 1.2, 8.2, sz * C - TK / 2, gap + 1.2, 11, sz * C + TK / 2, 'concrete', { color: 0x7a7a6a, tag: 'rock' }); W.box(-gap, -1.2, Math.min(sz * (M0 - 0.5), sz * (M1 + 0.5)), gap, 0.1, Math.max(sz * (M0 - 0.5), sz * (M1 + 0.5)), 'wood', { u: 1.2, tag: 'wood' }); }
+      // escadas internas para a passarela das muralhas
+      stairsUp(W, -C + TK + 1, -C + TK + 1.2, 'z+', 16, 2, 'concrete', 0x6a6a5a); stairsUp(W, C - TK - 1, C - TK - 1.2, 'z-', 16, 2, 'concrete', 0x6a6a5a);
+      W.box(-C + TK, WH - 0.3, -C + TK + 8, -C + TK + 3, WH, -C + TK + 10, 'concrete', { color: 0x6a6a5a, tag: 'rock' }); W.box(C - TK - 3, WH - 0.3, C - TK - 10, C - TK, WH, C - TK - 8, 'concrete', { color: 0x6a6a5a, tag: 'rock' });
+      hollow(W, rng, -7, -7, 7, 7, 13, 'concrete', { u: 3, partition: false, roofMat: 'concrete', color: 0x7a7a6a, y: 0 });
+      for (const [bx, bz, w, d] of [[-C + 6, 8, 8, 6], [C - 14, -10, 8, 7], [10, 16, 6, 5]]) hollow(W, rng, bx, bz, bx + w, bz + d, 3.4, 'wood', { u: 1.6, partition: false, roofMat: 'wood', color: 0x8a6a44, y: 0 });
+      W.cyl(-14, -14, 1.3, 0, 1.3, 'concrete', { color: 0x7a7a6a, tag: 'rock' });
+      for (let i = 0; i < cnt(10); i++) { const p = W.randomFree(rng, -H + 20, H - 20, -H + 40, H - 40, 2); if (Math.max(Math.abs(p.x), Math.abs(p.z)) < M1 + 4) continue; sandbags(W, p.x, p.z, 3.5, rng() < 0.5, 0.9); }
+      scatter(W, rng, 'oak', cnt(70), { col: 0.3, smin: 1, smax: 1.7, tint: 0xffffff, sy: true, avoid: (x, z) => Math.max(Math.abs(x), Math.abs(z)) < M1 + 5 }); scatter(W, rng, 'bush', cnt(80), { smin: 0.7, smax: 1.3, shadow: false, avoid: (x, z) => Math.max(Math.abs(x), Math.abs(z)) < M1 + 3 });
+      rocks(W, rng, cnt(20), 0.6, 1.8, 0x8a8a80);
+      placeSpawns(W, rng);
+    }
+  };
+
+  BC.MAP_ORDER = ['snow', 'forest', 'trench', 'city', 'swamp', 'desert', 'jungle', 'mountain', 'industrial', 'village', 'airbase', 'coast', 'canyon', 'volcano', 'farm', 'harbor', 'ruins', 'oilfield', 'pit', 'castle'];
   // tamanhos (metade da área jogável, em metros): total = 2H
   BC.MAP_SIZES = { pequeno: 110, medio: 160, grande: 220, enorme: 280 };
   BC.buildMap = function (id, size) {
