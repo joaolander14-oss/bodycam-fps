@@ -25,19 +25,52 @@
   const SEATS = [[-0.8, 0.9, 1.6], [0.8, 0.9, 1.6], [-0.8, 0.9, 0.4], [0.8, 0.9, 0.4], [-0.8, 0.9, -0.8], [0.8, 0.9, -0.8]]; // troop seats (local, forward = -z)
   let vspec = null;
 
+  // BTR-80 detalhado: casco com perfil real (extrudado), glacis inclinado, 8 rodas com cubos, torreta BPU-1 com KPVT 14,5 mm e PKT
+  const flat = (c) => new T.MeshLambertMaterial({ color: c, flatShading: true });
   function build(team) {
-    const g = new T.Group(), wheels = [], tc = team === 0 ? 0x2f6bd1 : 0xd13b2f, olive = 0x4b5a3a;
-    box(2.9, 0.85, 7.3, olive, 0, 0.95, 0, g); box(2.55, 0.9, 5.4, 0x56673f, 0, 1.8, 0.3, g);
-    const gl = box(2.5, 0.22, 1.7, olive, 0, 1.5, -3.5, g); gl.rotation.x = -0.45; box(2.6, 0.5, 0.9, 0x3d4a2e, 0, 1.3, -3.95, g);
-    box(0.06, 0.06, 5.0, tc, -1.46, 1.55, 0.2, g); box(0.06, 0.06, 5.0, tc, 1.46, 1.55, 0.2, g);
-    box(0.5, 0.3, 0.8, 0x2a3320, -1.0, 2.4, 1.5, g); box(0.5, 0.3, 0.8, 0x2a3320, 1.0, 2.4, 1.5, g);
-    const tur = new T.Group(); tur.position.set(0, 2.35, -0.8); g.add(tur);
-    const tb = new T.Mesh(new T.CylinderGeometry(0.85, 1.0, 0.55, 10), mat(0x4f6040)); tb.castShadow = true; tur.add(tb);
-    const gun = new T.Group(); gun.position.set(0, 0.1, -0.5); tur.add(gun);
-    const bar = new T.Mesh(new T.CylinderGeometry(0.06, 0.06, 2.4, 8), mat(0x222222)); bar.rotation.x = Math.PI / 2; bar.position.set(0.18, 0.06, -1.2); gun.add(bar);
-    const bar2 = new T.Mesh(new T.CylinderGeometry(0.04, 0.04, 2.0, 8), mat(0x222222)); bar2.rotation.x = Math.PI / 2; bar2.position.set(-0.12, 0.04, -1.0); gun.add(bar2);
-    for (const sx of [-1, 1]) for (const z of [-2.7, -0.9, 0.9, 2.7]) { const w = new T.Mesh(new T.CylinderGeometry(0.58, 0.58, 0.38, 12), mat(0x1c1c1c)); w.rotation.z = Math.PI / 2; w.position.set(sx * 1.5, 0.58, z); w.castShadow = true; g.add(w); wheels.push(w); }
+    const g = new T.Group(), wheels = [], tc = team === 0 ? 0x2f6bd1 : 0xd13b2f, olive = 0x4b5a3a, olive2 = 0x56673f, dark = 0x1f2619, steel = 0x2b2d2b;
+    const add = (geo, color, x, y, z, parent) => { const m = new T.Mesh(geo, flat(color)); m.position.set(x, y, z); m.castShadow = true; (parent || g).add(m); return m; };
+    const B = (w, h, d, c, x, y, z, parent, rx, ry, rz) => { const m = add(new T.BoxGeometry(w, h, d), c, x, y, z, parent); if (rx || ry || rz) m.rotation.set(rx || 0, ry || 0, rz || 0); return m; };
+    const CY = (r1, r2, h, c, x, y, z, parent, seg) => add(new T.CylinderGeometry(r2, r1, h, seg || 14), c, x, y, z, parent);
+    // casco: perfil lateral extrudado (frente = -z)
+    const sh = new T.Shape(); const P = [[-3.8, 0.55], [3.7, 0.55], [3.85, 0.95], [3.4, 1.4], [2.85, 1.5], [2.3, 2.05], [-2.4, 2.1], [-3.4, 1.95], [-3.85, 1.4]];
+    sh.moveTo(P[0][0], P[0][1]); for (let k = 1; k < P.length; k++) sh.lineTo(P[k][0], P[k][1]); sh.closePath();
+    const hg = new T.ExtrudeGeometry(sh, { depth: 2.45, bevelEnabled: true, bevelThickness: 0.12, bevelSize: 0.1, bevelSegments: 1 }); hg.translate(0, 0, -1.225); hg.rotateY(Math.PI / 2);
+    add(hg, olive, 0, 0, 0);
+    // saias dos paralamas / caixas das rodas
+    for (const sx of [-1, 1]) { B(0.32, 0.5, 7.2, olive2, sx * 1.45, 0.95, 0.0); B(0.1, 0.85, 7.0, dark, sx * 1.58, 0.75, 0); for (const z of [-2.7, -0.95, 0.95, 2.7]) B(0.5, 0.18, 1.3, olive2, sx * 1.52, 1.22, z); }
+    // rodas: pneu, cubo e parafusos; 4 eixos por lado
+    for (const sx of [-1, 1]) for (const z of [-2.7, -0.95, 0.95, 2.7]) {
+      const w = new T.Group(); w.position.set(sx * 1.52, 0.62, z); g.add(w);
+      const t = new T.Mesh(new T.CylinderGeometry(0.62, 0.62, 0.42, 18), flat(0x161616)); t.rotation.z = Math.PI / 2; t.castShadow = true; w.add(t);
+      const hub = new T.Mesh(new T.CylinderGeometry(0.3, 0.3, 0.46, 10), flat(0x5a5e55)); hub.rotation.z = Math.PI / 2; w.add(hub);
+      for (let a = 0; a < 6; a++) { const bolt = new T.Mesh(new T.CylinderGeometry(0.035, 0.035, 0.5, 5), flat(0x2a2b28)); bolt.rotation.z = Math.PI / 2; bolt.position.set(0, Math.cos(a * 1.047) * 0.2, Math.sin(a * 1.047) * 0.2); w.add(bolt); }
+      for (let a = 0; a < 12; a++) { const tr = new T.Mesh(new T.BoxGeometry(0.44, 0.08, 0.12), flat(0x101010)); tr.position.set(0, Math.cos(a * 0.5236) * 0.62, Math.sin(a * 0.5236) * 0.62); tr.rotation.x = -a * 0.5236; w.add(tr); }
+      wheels.push(w);
+    }
+    // frente: faróis com grades, aleta de flutuação (trim vane), ganchos de reboque, janelas do motorista
+    for (const sx of [-1, 1]) { B(0.34, 0.24, 0.12, 0x2a2c28, sx * 1.1, 1.0, -3.95); B(0.2, 0.14, 0.05, 0xf2e8b8, sx * 1.1, 1.0, -4.02); B(0.1, 0.2, 0.3, steel, sx * 0.55, 0.7, -3.95); }
+    B(2.0, 0.08, 0.8, olive2, 0, 1.45, -3.6, g, -0.58); B(2.2, 0.3, 0.1, dark, 0, 1.8, -2.55, g, -0.2);
+    for (const sx of [-1, 1]) B(0.52, 0.2, 0.06, 0x20304a, sx * 0.7, 1.77, -2.56, g, -0.35);
+    // escotilhas de tropa no flanco, portinholas de tiro, faixa colorida do time
+    for (const sx of [-1, 1]) { B(0.04, 0.9, 0.7, 0x3b4930, sx * 1.35, 1.35, -0.5); B(0.04, 0.9, 0.7, 0x3b4930, sx * 1.35, 1.35, 1.1); for (const z of [-1.4, 0.2, 1.8]) { B(0.04, 0.16, 0.16, 0x151515, sx * 1.34, 1.7, z); CY(0.05, 0.05, 0.06, 0x2a2c28, sx * 1.37, 1.7, z, g, 8).rotation.z = Math.PI / 2; } B(0.05, 0.08, 6.0, tc, sx * 1.36, 1.05, 0.1); }
+    // convés traseiro: grades do motor, escapamentos, antena, tampas
+    B(2.0, 0.08, 2.6, 0x2a3320, 0, 2.15, 1.7); for (let k = 0; k < 6; k++) B(1.8, 0.04, 0.08, 0x151a12, 0, 2.2, 0.6 + k * 0.4);
+    for (const sx of [-1, 1]) { CY(0.08, 0.08, 1.0, 0x2c2c2c, sx * 1.2, 1.3, 3.6, g, 8).rotation.x = Math.PI / 2; B(0.5, 0.3, 0.7, olive2, sx * 0.9, 2.25, -1.2); }
+    CY(0.012, 0.012, 2.4, 0x111111, 1.0, 3.3, 2.9, g, 5); B(0.15, 0.1, 0.15, 0x222222, 1.0, 2.1, 2.9);
+    // torreta BPU-1: tronco de cone, mantelete, escotilha do comandante, KPVT + PKT, lançadores de fumaça
+    const tur = new T.Group(); tur.position.set(0, 2.1, -0.9); g.add(tur);
+    const tb = new T.Mesh(new T.CylinderGeometry(0.62, 0.95, 0.62, 10), flat(0x4f6040)); tb.position.y = 0.31; tb.castShadow = true; tur.add(tb);
+    B(0.7, 0.12, 0.7, 0x44563a, 0, 0.66, 0.1, tur); const hat = CY(0.26, 0.26, 0.08, 0x3e4d33, 0.28, 0.72, 0.28, tur, 10); B(0.5, 0.36, 0.36, 0x3e4d33, 0, 0.32, -0.8, tur);
+    for (const sx of [-1, 1]) for (let k = 0; k < 3; k++) { const sm = CY(0.045, 0.045, 0.2, 0x222522, sx * 0.9, 0.3 + k * 0.05, 0.1 + k * 0.17, tur, 8); sm.rotation.z = -sx * 0.6; }
+    B(0.5, 0.12, 0.34, steel, -0.45, 0.58, -0.62, tur);
+    const gun = new T.Group(); gun.position.set(0, 0.32, -0.8); tur.add(gun);
+    const bar = new T.Mesh(new T.CylinderGeometry(0.05, 0.05, 2.5, 10), flat(0x1c1c1c)); bar.rotation.x = Math.PI / 2; bar.position.set(0.16, 0.0, -1.25); gun.add(bar);
+    const jac = new T.Mesh(new T.CylinderGeometry(0.075, 0.075, 0.9, 10), flat(0x2a2c2a)); jac.rotation.x = Math.PI / 2; jac.position.set(0.16, 0.0, -0.45); gun.add(jac);
+    const mb = new T.Mesh(new T.CylinderGeometry(0.085, 0.085, 0.16, 8), flat(0x101010)); mb.rotation.x = Math.PI / 2; mb.position.set(0.16, 0.0, -2.52); gun.add(mb);
+    const bar2 = new T.Mesh(new T.CylinderGeometry(0.03, 0.03, 1.5, 8), flat(0x1c1c1c)); bar2.rotation.x = Math.PI / 2; bar2.position.set(-0.14, -0.02, -0.95); gun.add(bar2);
     g.userData = { tur, gun, wheels, olive: [] }; g.traverse((o) => { if (o.isMesh && o.material.color) g.userData.olive.push(o); });
+    g.userData.olive.forEach((o) => { o.material = o.material.clone(); });
     return g;
   }
 
