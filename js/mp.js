@@ -257,17 +257,19 @@
   function hostRecv(c, d) {
     if (!d || typeof d !== 'object') return;
     if (d.t === 'hello') {
+      if (d.gid && MP.players.some((p) => p.gid === d.gid && p.conn !== c)) return; // o mesmo jogador chegando por outro caminho (direto + retransmissão)
       const ex = MP.players.findIndex((p) => p.conn === c); if (ex >= 0) { sendTo(c, { t: 'welcome', id: ex }); return; }
       if (d.ver !== MP.ver) { sendTo(c, { t: 'rej', why: 'Versão diferente do jogo. Atualize a página (Ctrl+F5).' }); setTimeout(() => { try { c.close(); } catch (e) { } }, 300); return; }
       if (MP.playing) { sendTo(c, { t: 'rej', why: 'A partida já começou. Aguarde o fim.' }); return; }
       if (MP.players.length >= 8) { sendTo(c, { t: 'rej', why: 'Sala cheia (máximo 8 jogadores).' }); return; }
       const id = MP.players.length;
-      MP.players.push({ name: String(d.name || 'Soldado').slice(0, 14), host: false, team: id % 2, loadout: (d.loadout || []).slice(0, 2), agent: d.agent | 0, conn: c }); c._id = id; conns.push(c);
+      MP.players.push({ name: String(d.name || 'Soldado').slice(0, 14), host: false, team: MP.players[0] ? MP.players[0].team : 0, loadout: (d.loadout || []).slice(0, 2), agent: d.agent | 0, conn: c, gid: d.gid }); c._id = id; conns.push(c);
       sendTo(c, { t: 'welcome', id }); lobbyChanged(); return;
     }
     const p = MP.players.find((q) => q.conn === c), r = remotes.find((q) => q.conn === c); if (!p) return; if (c.relay) c.last = performance.now();
     if (d.t === 'in' && r) r.receive(d);
     else if (d.t === 'f' && r) hostFire(r, d, c);
+    else if (d.t === 'team' && !MP.playing) { p.team = d.team ? 1 : 0; lobbyChanged(); }
     else if (d.t === 'm' && r) { r.hp = Math.min(100, Math.min(+d.hp || 0, r.hp + 65)); r.bld = 0; }
     else if (d.t === 'g' && r) { const o = { x: d.p[0], y: d.p[1], z: d.p[2] }, v = d.v; if (!BC.GREN[d.ty] || Math.hypot(o.x - r.x, o.z - r.z) > 8) return; _throw.call(BC.Gren, r, d.ty, new T.Vector3(o.x, o.y, o.z), new T.Vector3(v[0], v[1], v[2])); bcast({ t: 'g', ty: d.ty, p: d.p, v: d.v, tm: r.team }, c); }
   }
@@ -275,7 +277,7 @@
     const i = MP.players.findIndex((p) => p.conn === c); conns = conns.filter((x) => x !== c); if (i < 0) return;
     const r = remotes.find((q) => q.conn === c);
     if (r) { r.alive = false; r.dispose(); const k = G.actors.indexOf(r); if (k >= 0) G.actors.splice(k, 1); remotes = remotes.filter((q) => q !== r); }
-    if (MP.playing) MP.players[i].gone = true; else { MP.players.splice(i, 1); MP.players.forEach((p, k) => { p.team = k % 2; if (p.conn) { p.conn._id = k; sendTo(p.conn, { t: 'welcome', id: k }); } }); }
+    if (MP.playing) MP.players[i].gone = true; else { MP.players.splice(i, 1); MP.players.forEach((p, k) => { if (p.conn) { p.conn._id = k; sendTo(p.conn, { t: 'welcome', id: k }); } }); }
     lobbyChanged();
   }
   const CFGK = ['map', 'mapSize', 'size', 'skin', 'enemy', 'farda', 'fardaE', 'diff', 'mode'];
@@ -283,7 +285,7 @@
     if (MP.role !== 'host') return;
     if (MP.players.length < 2 && !confirm('Ninguém entrou na sala ainda. Iniciar mesmo assim (só com bots)?')) { el('menu').classList.remove('hidden'); return false; }
     const S = G.settings, cfg = {}; for (const k of CFGK) cfg[k] = S[k];
-    MP.playing = true; G.net = 'host'; G.myTeam = 0; endSent = false; acc = 0;
+    MP.playing = true; G.net = 'host'; G.myTeam = MP.players[0].team | 0; endSent = false; acc = 0;
     MP.players.forEach((p, i) => { if (p.conn) sendTo(p.conn, { t: 'start', cfg, id: i, team: p.team, names: MP.players.map((q) => q.name), teams: MP.players.map((q) => q.team) }); });
     G.start({}); G.net = 'host';
     remotes = [];
@@ -314,7 +316,7 @@
       let done = false, err = '';
       const fail = (m) => { if (!done) { done = true; clearInterval(helloTimer); rej(new Error(m)); } };
       const ok = (conn, how) => { if (done || tok !== joinTok) return false; done = true; clearInterval(helloTimer); toHost = conn; MP.role = 'guest'; MP.code = code; setStatus('Conectado à sala ' + code + (how === 'relay' ? ' (retransmissão)' : '') + '. Aguarde o anfitrião iniciar.'); res(code); return true; };
-      const hello = { t: 'hello', ver: MP.ver, name, loadout, agent };
+      const hello = { t: 'hello', ver: MP.ver, name, loadout, agent, gid };
       const tm = setTimeout(() => fail(err || 'Não encontrei a sala. Confira o código (e se o anfitrião ainda está com a sala aberta).'), 25000);
       const onAny = (d, how, conn) => {
         if (!d || typeof d !== 'object') return;
@@ -430,9 +432,11 @@
 
   // ------------------------------------------------------------ interface (menu)
   const el = (id) => $(id) || document.createElement('div');
+  MP.setTeam = function (t) { if (MP.playing) return; if (MP.role === 'host') { MP.players[0].team = t; lobbyChanged(); } else if (toHost) sendTo(toHost, { t: 'team', team: t }); };
   function draw() {
     const box = el('mpList'), isH = MP.role === 'host';
-    box.innerHTML = MP.players.map((p) => `<div>${p.host ? '★ ' : '• '}${String(p.name).replace(/[<>&"]/g, '')} <span style="opacity:.6">— time ${p.team === 0 ? 'A' : 'B'}</span></div>`).join('');
+    box.innerHTML = MP.players.map((p, i) => `<div>${p.host ? '★ ' : '• '}${String(p.name).replace(/[<>&"]/g, '')} <span style="opacity:.6">— time ${p.team === 0 ? 'A' : 'B'}</span>${i === MP.myId ? ` <button data-t="0" style="padding:2px 10px;${p.team === 0 ? 'background:#2f6a35' : ''}">A</button><button data-t="1" style="padding:2px 10px;${p.team === 1 ? 'background:#7a3a30' : ''}">B</button>` : ''}</div>`).join('');
+    box.querySelectorAll('button').forEach((b) => { b.onclick = () => MP.setTeam(+b.dataset.t); });
     el('mpStart').style.display = isH ? '' : 'none'; el('mpLeave').style.display = MP.role ? '' : 'none';
     el('mpHost').disabled = el('mpJoin').disabled = !!MP.role;
   }
