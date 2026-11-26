@@ -180,7 +180,7 @@
   const BC = window.BC, A = BC.Audio, synthShot = A.shot, _init = A.init;
   const real = {}; let count = 0, last = {};
   const ALIAS = { p9: 'pistol', sg: 'shotgun' };
-  const CFG = { p22: { g: 0.7, dur: 1.1, r: 1 }, ppsh: { g: 0.85, dur: 1.3, r: 1 }, lever: { g: 1.0, dur: 1.5, r: 1 }, p380: { g: 0.7, dur: 1.1, r: 1 }, p45: { g: 0.8, dur: 1.3, r: 1 }, rev: { g: 0.85, dur: 1.3, r: 1 }, smg: { g: 0.8, dur: 1.3, r: 1 }, bolt: { g: 1.2, dur: 1.6, r: 1 }, ak: { g: 0.95, dur: 1.45, r: 0.99 }, m4: { g: 0.8, dur: 1.35, r: 1.05 }, pistol: { g: 0.62, dur: 1.2, r: 1.0 }, shotgun: { g: 1.35, dur: 1.5, r: 0.96 }, svd: { g: 1.45, dur: 1.55, r: 0.93 } };
+  const CFG = { lmg: { g: 1.0, dur: 1.4, r: 1 }, cz52: { g: 0.9, dur: 1.3, r: 1 }, bpowder: { g: 0.9, dur: 1.2, r: 1 }, p22m: { g: 0.8, dur: 1.0, r: 1 }, unk: { g: 1.15, dur: 1.5, r: 1 }, p22: { g: 0.7, dur: 1.1, r: 1 }, ppsh: { g: 0.85, dur: 1.3, r: 1 }, lever: { g: 1.0, dur: 1.5, r: 1 }, p380: { g: 0.7, dur: 1.1, r: 1 }, p45: { g: 0.8, dur: 1.3, r: 1 }, rev: { g: 0.85, dur: 1.3, r: 1 }, smg: { g: 0.8, dur: 1.3, r: 1 }, bolt: { g: 1.2, dur: 1.6, r: 1 }, ak: { g: 0.95, dur: 1.45, r: 0.99 }, m4: { g: 0.8, dur: 1.35, r: 1.05 }, pistol: { g: 0.62, dur: 1.2, r: 1.0 }, shotgun: { g: 1.35, dur: 1.5, r: 0.96 }, svd: { g: 1.45, dur: 1.55, r: 0.93 } };
   function b64(s) { const bin = atob(s), u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return u.buffer; }
   A.init = function () {
     const had = !!A.ctx; _init();

@@ -128,6 +128,7 @@
 
   BC.loadArsenal = async function () {
     const man = await (await fetch('models/pool2/manifest.json')).json();
+    try { BC.MOUNTS = await (await fetch('models/sightmount.json')).json(); } catch (e) { BC.MOUNTS = {}; }
     // luneta realista (pool2 #60)
     try {
       const obj = await loaders.glb('models/pool2/' + man[60]), d = gather(obj), B = orient(d, undefined, true), P = applyBasis(d.P, B, new Float32Array(d.P.length)); let mn = [1e9, 1e9, 1e9], mx = [-1e9, -1e9, -1e9];
@@ -151,7 +152,7 @@
       if (!w.model.startsWith('var:')) continue; const base = BC.MODELS[w.model.slice(4)]; if (!base) continue;
       const body = new T.Group(); base.body.children.forEach((m) => body.add(m.clone())); const G = JSON.parse(JSON.stringify(base.G)); G.real = true; const R = { body, G, flat: base.flat };
       if (w.mod === 'sup') { const sp = BC.makeSupp(G, w.cls); body.add(sp.mesh); G.muzzle[2] -= sp.len; }
-      else if (w.mod && w.mod.startsWith('scope:')) { const t = w.mod.slice(6), sc = BC.makeScope(t, G, w.cls); if (sc) { body.add(sc); G.scopeType = t; } }
+      else if (w.mod && w.mod.startsWith('scope:')) { const t = w.mod.slice(6), sc = BC.makeScope(t, G, w.cls, w.id); if (sc) { body.add(sc); G.scopeType = t; } }
       BC.MODELS[w.id] = R;
     }
   };

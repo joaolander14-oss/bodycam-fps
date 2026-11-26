@@ -118,7 +118,7 @@
       fl.position.set(m.G.muzzle[0], m.G.muzzle[1], m.G.muzzle[2] - 0.03); fl.scale.set(0.3, 0.3, 1); fl.visible = false; m.root.add(fl);
       vmGroup.add(m.root); m.root.visible = false; m.arms = arms; m.flash = fl; BC.VMA.setup(m);
       const wst = P.w[vm.length]; m.wst = wst;
-      if (wst.extra) { m.scopeMesh = BC.makeScope(wst.scopeType, m.G, s.cls); if (m.scopeMesh) { m.root.add(m.scopeMesh); wst.scopeH = BC.SCOPES[wst.scopeType].h || 0.05; if (m.scopeMesh.userData.win) { wst.winY = m.scopeMesh.userData.win.y; wst.winX = m.scopeMesh.userData.win.x; } } }
+      if (wst.extra) { m.scopeMesh = BC.makeScope(wst.scopeType, m.G, s.cls, s.id); if (m.scopeMesh) { m.root.add(m.scopeMesh); wst.scopeH = BC.SCOPES[wst.scopeType].h || 0.05; if (m.scopeMesh.userData.win) { wst.winY = m.scopeMesh.userData.win.y; wst.winX = m.scopeMesh.userData.win.x; } } }
       else if (m.G.scopeType && BC.SCOPES[m.G.scopeType]) wst.scopeH = BC.SCOPES[m.G.scopeType].h; m.root.traverse((o) => { o.castShadow = false; });
       BC.Optics.build(m, wst, s);
       vm.push(m);
@@ -473,7 +473,7 @@
     const scoped = wst.scoped && ads > 0.92;
     vmGroup.visible = P.alive && !(P.fall > 0.3); BC.UI.setScope(false); BC.UI.setDot(false);
     if (m.scopeMesh) m.scopeMesh.visible = true;
-    const hip = spec.hip, adp = [spec.ads[0] - (wst.dot ? (wst.winX || 0) : 0), spec.ads[1] - (wst.dot ? Math.max(0.008, (wst.winY || wst.scopeH / 2 + 0.004) - 0.01) : wst.scopeH && !wst.scoped ? wst.scopeH * 0.9 : 0), spec.ads[2]];
+    const hip = spec.hip, adp = [spec.ads[0] - (wst.dot ? (wst.winX || 0) : 0), spec.ads[1] - (wst.dot ? ((wst.winY !== undefined ? wst.winY : wst.scopeH / 2 + 0.004) - 0.01) : wst.scopeH && !wst.scoped ? wst.scopeH * 0.9 : 0), spec.ads[2]];
     let px = BC.lerp(hip[0], adp[0], ads), py = BC.lerp(hip[1], adp[1], ads), pz = BC.lerp(hip[2], adp[2], ads);
     let rx = 0, ry = 0, rz = 0;
     // sprint: arma baixa e inclinada

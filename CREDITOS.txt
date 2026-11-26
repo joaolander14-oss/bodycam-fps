@@ -53,3 +53,10 @@ ambientCG (https://ambientcg.com, CC0): Ground037, Grass004, Ground102, Ground04
 "Stinger" por Aaron Clifford — https://poly.pizza/m/6CUQX98vha4
 "Little drone" por Nick Olson — https://poly.pizza/m/dJ9mjQQqDQJ
 Licença: https://creativecommons.org/licenses/by/3.0/
+
+--- Sons de tiro adicionais (js/sounds8.js, gravações reais) ---
+CC0 (OpenGameArt): "Gunshot Sounds" (CZ-52, Mosin Nagant, SKS e escopeta, gravados em estande) https://opengameart.org/content/gunshot-sounds ; "Gunshots" (.22 pistola, .22 Magnum, pólvora negra, arma não identificada) https://opengameart.org/content/gunshots
+CC BY 4.0: "Light Machine Gun" por Nightshade Game Studios — https://opengameart.org/content/light-machine-gun (licença: https://creativecommons.org/licenses/by/4.0/). Recortado, reamostrado e normalizado.
+
+--- Posicionamento das miras ---
+Pontos de montagem das miras (models/sightmount.json) medidos com Blender 5.3 (raycast na superfície superior de cada modelo de arma).

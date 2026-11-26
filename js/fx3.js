@@ -11,7 +11,20 @@
     lobe(g, c - 1, c - 1, s * 0.07, 4, r); g.fillStyle = 'rgba(128,8,8,.85)'; g.fill();
     g.fillStyle = 'rgba(255,190,190,.30)'; g.beginPath(); g.ellipse(c - s * 0.06, c - s * 0.07, s * 0.035, s * 0.02, -0.6, 0, 7); g.fill();
   }, false);
-  const TEXS = [mkSplat(91), mkSplat(17), mkSplat(53)];
+  const mkDrip = (seed) => BC.canvasTex(128, (g, s) => {
+    const r = BC.rng(seed), cx = s / 2; g.clearRect(0, 0, s, s);
+    const n = 3 + ((r() * 2) | 0);
+    for (let i = 0; i < n; i++) { // escorridos: filete que desce e termina em gota
+      const x = cx + (r() - 0.5) * 38, w = 2.2 + r() * 3.2, y0 = 34 + r() * 10, y1 = y0 + 26 + r() * 52;
+      let gr = g.createLinearGradient(0, y0, 0, y1); gr.addColorStop(0, 'rgba(86,4,4,.95)'); gr.addColorStop(0.7, 'rgba(104,6,6,.9)'); gr.addColorStop(1, 'rgba(120,8,8,.9)');
+      g.fillStyle = gr; g.beginPath(); g.moveTo(x - w, y0); g.lineTo(x - w * 0.55, y1 - 3); g.arc(x, y1 - 3, w * 0.7 + 0.6, Math.PI, 0, true); g.lineTo(x + w, y0); g.closePath(); g.fill();
+      g.fillStyle = 'rgba(255,190,190,.22)'; g.fillRect(x - w * 0.3, y0 + 4, Math.max(1, w * 0.25), (y1 - y0) * 0.6);
+    }
+    for (let i = 0; i < 18; i++) { const a = (r() - 0.5) * 2.4 - 1.57, d = 8 + r() * 34, rad = 0.6 + r() * 2.2; g.fillStyle = 'rgba(' + (92 + (r() * 30) | 0) + ',5,5,.9)'; g.beginPath(); g.ellipse(cx + Math.cos(a) * d * 1.3, 34 + Math.sin(a) * d * 0.9 + 10, rad * (1 + r()), rad, a, 0, 7); g.fill(); }
+    lobe(g, cx, 36, s * 0.13, 5, r); g.fillStyle = 'rgba(80,3,3,.96)'; g.fill(); lobe(g, cx - 1, 35, s * 0.075, 4, r); g.fillStyle = 'rgba(132,9,9,.85)'; g.fill();
+    g.fillStyle = 'rgba(255,190,190,.28)'; g.beginPath(); g.ellipse(cx - 5, 31, 4, 2.2, -0.6, 0, 7); g.fill();
+  }, false);
+  const TEXS = [mkSplat(91), mkSplat(17), mkSplat(53)], DRIPS = [mkDrip(5), mkDrip(29)];
   const tex = TEXS[0];
   const texP = BC.canvasTex(128, (g, s) => {
     const r = BC.rng(7), c = s / 2; g.clearRect(0, 0, s, s);
@@ -27,16 +40,17 @@
     for (let i = 0; i < 420; i++) { const m = new T.Mesh(pg, new T.MeshBasicMaterial({ map: TEXS[i % 3], transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -3 })); m.visible = false; fx.scene.add(m); fx.bd.push({ m, life: 0 }); }
   }
   function dec(fx, p, n, size, op) {
-    ensure(fx); const d = fx.bd[fx.bdi++ % fx.bd.length];
-    d.m.position.set(p.x + n.x * 0.015, p.y + n.y * 0.015, p.z + n.z * 0.015); d.m.lookAt(p.x + n.x, p.y + n.y, p.z + n.z); d.m.rotateZ(Math.random() * 6.28);
-    d.m.scale.set(size * (0.75 + Math.random() * 0.5), size * (0.75 + Math.random() * 0.5), 1); d.m.material.opacity = op || 0.9; d.m.visible = true; d.life = 160; return d;
+    ensure(fx); const d = fx.bd[fx.bdi++ % fx.bd.length], wall = Math.abs(n.y) < 0.5, mat = d.m.material;
+    mat.map = wall ? DRIPS[(Math.random() * 2) | 0] : TEXS[(Math.random() * 3) | 0]; mat.color.setRGB(1, 1, 1);
+    d.m.position.set(p.x + n.x * 0.015, p.y + n.y * 0.015, p.z + n.z * 0.015); d.m.lookAt(p.x + n.x, p.y + n.y, p.z + n.z); if (!wall) d.m.rotateZ(Math.random() * 6.28);
+    d.m.scale.set(size * (0.75 + Math.random() * 0.5) * (wall ? 1.25 : 1), size * (0.75 + Math.random() * 0.5) * (wall ? 1.6 : 1), 1); mat.opacity = op || 0.9; d.m.visible = true; d.life = 160; return d;
   }
   const drop = (fx, x, y, z, vx, vy, vz, sc) => fx.bdrop(x, y, z, vx, vy, vz, sc);
   F._dec = dec;
 
   F.blood = function (pt, d, zone, world, dmg) {
     ensure(this); const amt = BC.clamp((dmg || 50) / 55, 0.5, 3), head = zone === 'head';
-    this.puff(pt.x, pt.y, pt.z, 0x7a0c0c, Math.round(3 + 2 * amt), 1.3, head ? 0.2 : 0.13, 0.4);
+    (this.bloodMist || this.puff).call(this, pt.x, pt.y, pt.z, 0x7a0c0c, Math.round(3 + 2 * amt), 1.3, head ? 0.2 : 0.13, 0.4);
     const nf = Math.round(14 * amt * (head ? 1.5 : 1));
     for (let i = 0; i < nf; i++) { const sp = (2 + Math.random() * 6) * Math.sqrt(amt); drop(this, pt.x, pt.y, pt.z, d.x * sp + (Math.random() - 0.5) * 3.2, d.y * sp + Math.random() * 2.4, d.z * sp + (Math.random() - 0.5) * 3.2, 0.3 + Math.random() * 0.9); }
     for (let i = 0; i < Math.round(5 * amt); i++) { const sp = 1 + Math.random() * 2.5; drop(this, pt.x, pt.y, pt.z, -d.x * sp + (Math.random() - 0.5) * 2, Math.random() * 1.6, -d.z * sp + (Math.random() - 0.5) * 2, 0.25 + Math.random() * 0.5); }

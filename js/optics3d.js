@@ -72,12 +72,18 @@
     const loader = new T.GLTFLoader(), files = [...new Set(Object.values(FILES).map((f) => f[0]))];
     return Promise.all(files.map((f) => new Promise((res) => loader.load('models/sights/' + f + '.glb', (g) => { try { loaded[f] = prepSight(f, g.scene); } catch (e) { console.warn('mira', f, e); } res(); }, undefined, () => res()))));
   };
+  // ponto de montagem medido no Blender (models/sightmount.json): z do centro da base e y da superfície superior da arma
+  BC.mountFor = function (id, S, cls) {
+    const base = { z: cls === 'sniper' ? -0.06 : -0.03, y: 0 }, M = id && BC.MOUNTS && BC.MOUNTS[id]; if (!M) return base;
+    const m = S && S.len > 0.1 ? M.long : M.short; return m ? { z: m.z, y: m.y } : base;
+  };
   const procScope = BC.makeScope;
-  BC.makeScope = function (type, G, cls) {
-    const F = FILES[type], pr = F && loaded[F[0]]; if (!pr) return procScope(type, G, cls);
-    const S = BC.SCOPES[type], zc = (cls === 'sniper' ? -0.06 : -0.03), g = new T.Group(), wrap = new T.Group(), inner = pr.scene.clone(true), k = F[1];
+  BC.makeScope = function (type, G, cls, id) {
+    const F = FILES[type], pr = F && loaded[F[0]], mt = BC.mountFor(id, BC.SCOPES[type], cls);
+    if (!pr) { const g0 = procScope(type, G, cls); if (g0) { const dz = mt.z - (cls === 'sniper' ? -0.06 : -0.03); g0.position.set(0, mt.y, dz); const w0 = g0.userData.win; if (w0) { w0.y += mt.y; w0.z += dz; } } return g0; }
+    const S = BC.SCOPES[type], zc = mt.z, g = new T.Group(), wrap = new T.Group(), inner = pr.scene.clone(true), k = F[1];
     inner.position.set(-pr.c.x, -pr.min.y, -pr.c.z); wrap.add(inner);
-    const flip = pr.frontAtPlusZ || FRONT_FLIP[type]; wrap.rotation.y = flip ? Math.PI : 0; wrap.scale.setScalar(k); wrap.position.set(0, 0, zc); g.add(wrap);
+    const flip = pr.frontAtPlusZ || FRONT_FLIP[type]; wrap.rotation.y = flip ? Math.PI : 0; wrap.scale.setScalar(k); wrap.position.set(0, mt.y, zc); g.add(wrap);
     inner.traverse((o) => { if (o.isMesh) { o.castShadow = false; o.material = o.material.clone(); if (o.material.metalness !== undefined) { o.material.metalness = Math.min(o.material.metalness, 0.3); o.material.roughness = Math.max(o.material.roughness, 0.55); } } });
     const H = pr.size.y * k, W = pr.size.x * k;
     // vidros (material "Glass" e a lente azul) ficam transparentes: dá para enxergar através da mira
@@ -89,7 +95,7 @@
     });
     if (S.kind === 'dot') {
       if (hasG) { const c = gb.getCenter(new T.Vector3()), sz = gb.getSize(new T.Vector3()); g.userData.win = { x: c.x, y: c.y, z: c.z, w: Math.max(0.012, Math.min(sz.x, sz.y) * 0.85), h: Math.max(0.012, Math.min(sz.x, sz.y) * 0.85) }; }
-      else g.userData.win = { x: 0, y: H * 0.62, z: zc, w: W * 0.55, h: H * 0.42 };
+      else g.userData.win = { x: 0, y: mt.y + H * 0.62, z: zc, w: W * 0.55, h: H * 0.42 };
     }
     g.userData.type = type; g.userData.model = true; return g;
   };
